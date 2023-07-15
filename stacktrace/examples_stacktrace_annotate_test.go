@@ -1,15 +1,15 @@
 package stacktrace_test
 
 import (
-	"errors"
+	"database/sql"
 	"fmt"
 
 	"github.com/alextanhongpin/errors/stacktrace"
 )
 
 func ExampleStackTraceAnnotate() {
-	err := findProduct()
-	err = stacktrace.Annotate(err, "product-123")
+	err := findProduct(42)
+	err = stacktrace.Annotate(err, "failed to find product")
 
 	fmt.Println(stacktrace.Sprint(err, false))
 	fmt.Println()
@@ -17,23 +17,23 @@ func ExampleStackTraceAnnotate() {
 	fmt.Println(stacktrace.Sprint(err, true))
 
 	// Output:
-	// Error: product not found
-	//     Origin is: findProduct
+	// Error: failed to find product: product id "42": sql: no rows in result set
+	//     Origin is: product id "42"
 	//         at stacktrace_test.findProduct (in examples_stacktrace_annotate_test.go:37)
 	//         at stacktrace_test.ExampleStackTraceAnnotate (in examples_stacktrace_annotate_test.go:11)
-	//     Ends here: product-123
+	//     Ends here: failed to find product
 	//         at stacktrace_test.ExampleStackTraceAnnotate (in examples_stacktrace_annotate_test.go:12)
 	//
 	// Reversed:
-	// Error: product not found
-	//     Ends here: product-123
+	// Error: failed to find product: product id "42": sql: no rows in result set
+	//     Ends here: failed to find product
 	//         at stacktrace_test.ExampleStackTraceAnnotate (in examples_stacktrace_annotate_test.go:12)
 	//         at stacktrace_test.ExampleStackTraceAnnotate (in examples_stacktrace_annotate_test.go:11)
-	//     Origin is: findProduct
+	//     Origin is: product id "42"
 	//         at stacktrace_test.findProduct (in examples_stacktrace_annotate_test.go:37)
 }
 
-func findProduct() error {
-	err := stacktrace.Annotate(errors.New("product not found"), "findProduct")
+func findProduct(id int64) error {
+	err := stacktrace.Annotate(sql.ErrNoRows, `product id "%d"`, id)
 	return err
 }

@@ -1,13 +1,11 @@
 package stacktrace_test
 
 import (
-	"errors"
+	"database/sql"
 	"fmt"
 
 	"github.com/alextanhongpin/errors/stacktrace"
 )
-
-var ErrPayoutDeclined = errors.New("Payout cannot be processed. Please contact customer support for more information")
 
 func ExampleWrap() {
 	err := handlePayout()
@@ -17,21 +15,21 @@ func ExampleWrap() {
 	fmt.Println(stacktrace.Sprint(err, true))
 
 	// Output:
-	// Error: Payout cannot be processed. Please contact customer support for more information
-	//     Origin is: account is actually frozen
-	//         at stacktrace_test.handlePayout (in examples_wrap_test.go:35)
+	// Error: product "lego" not found: sql: no rows in result set
+	//     Origin is: product "lego" not found
+	//         at stacktrace_test.handlePayout (in examples_wrap_test.go:33)
 	//     Ends here:
-	//         at stacktrace_test.ExampleWrap (in examples_wrap_test.go:13)
+	//         at stacktrace_test.ExampleWrap (in examples_wrap_test.go:11)
 	//
 	// Reversed:
-	// Error: Payout cannot be processed. Please contact customer support for more information
+	// Error: product "lego" not found: sql: no rows in result set
 	//     Ends here:
-	//         at stacktrace_test.ExampleWrap (in examples_wrap_test.go:13)
-	//     Origin is: account is actually frozen
-	//         at stacktrace_test.handlePayout (in examples_wrap_test.go:35)
+	//         at stacktrace_test.ExampleWrap (in examples_wrap_test.go:11)
+	//     Origin is: product "lego" not found
+	//         at stacktrace_test.handlePayout (in examples_wrap_test.go:33)
 }
 
 func handlePayout() error {
-	err := stacktrace.Annotate(ErrPayoutDeclined, "account is actually frozen")
+	err := stacktrace.Annotate(sql.ErrNoRows, `product "lego" not found`)
 	return err
 }

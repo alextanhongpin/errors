@@ -54,31 +54,64 @@ func wrap(err error, cause string, skip int) *ErrorTrace {
 	}
 
 	pcs, _ := unwrap(err)
-	seen := make(map[runtime.Frame]bool)
+	seen := make(map[runtime.Frame]uintptr)
 
 	for _, pc := range pcs {
-		seen[frameKey(pc)] = true
+		seen[frameKey(pc)] = pc
 	}
 
 	stack := callers(skip + 1)
+
+	// In the rare case where the stack is empty, the cause will not be recorded.
+	// cause.
+	if len(stack) == 0 {
+		return &ErrorTrace{
+			err: err,
+		}
+	}
+
+	// The first element in the stack is the PC where we want to annotate the
+	// cause.
+	// If may already exists in previous frames.
+	pc, ok := seen[frameKey(stack[0])]
+	if !ok {
+		pc = stack[0]
+	}
+
+	var count int
 	for i, pc := range stack {
-		if !seen[frameKey(pc)] {
-			stack = callers(skip + 1 + i)
+		// Only record frames that we have not seen.
+		if _, ok := seen[frameKey(pc)]; !ok {
+			stack = stack[i:]
 			break
 		}
+
+		// Track the seen count.
+		count++
+	}
+
+	// We have seen all the frames, clear it to avoid duplicate stacktrace.
+	if count == len(stack) {
+		stack = nil
 	}
 
 	return &ErrorTrace{
 		err:   err,
 		stack: stack,
 		cause: cause,
+		pc:    pc,
 	}
 }
 
 type ErrorTrace struct {
 	err   error
 	stack []uintptr
+
+	// The annotated cause at specific program line.
 	cause string
+
+	// The PC containing the cause, it can be from previous errors.
+	pc uintptr
 }
 
 func (e *ErrorTrace) StackTrace() []uintptr {
@@ -88,6 +121,12 @@ func (e *ErrorTrace) StackTrace() []uintptr {
 }
 
 func (e *ErrorTrace) Error() string {
+	// Wrap the cause. This should be the same behaviour as
+	// github.com/pkg/errors.
+	if len(e.cause) > 0 {
+		return fmt.Sprintf("%s: %s", e.cause, e.err.Error())
+	}
+
 	return e.err.Error()
 }
 
@@ -112,6 +151,11 @@ func unwrap(err error) ([]uintptr, map[uintptr]string) {
 		var t *ErrorTrace
 		if !errors.As(err, &t) {
 			break
+		}
+
+		// Set the frame with the cause.
+		if t.pc != 0 && len(t.cause) > 0 {
+			cause[t.pc] = t.cause
 		}
 
 		var ordered []uintptr
@@ -139,11 +183,6 @@ func unwrap(err error) ([]uintptr, map[uintptr]string) {
 			if !more {
 				break
 			}
-		}
-
-		// The first frame indicates the cause.
-		if len(ordered) > 0 && len(t.cause) > 0 {
-			cause[ordered[0]] = t.cause
 		}
 
 		// Stack is ordered from bottom-up.

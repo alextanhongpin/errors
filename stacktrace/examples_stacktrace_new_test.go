@@ -8,7 +8,6 @@ import (
 
 func ExampleStackTraceNew() {
 	err := baz()
-	err = fmt.Errorf("wrapped: %w", err)
 
 	fmt.Println(stacktrace.Sprint(err, false))
 	fmt.Println()
@@ -16,9 +15,9 @@ func ExampleStackTraceNew() {
 	fmt.Println(stacktrace.Sprint(err, true))
 
 	// Output:
-	// Error: wrapped: foo
+	// Error: baz: bar: to foo or not: foo
 	//     Origin is:
-	//         at stacktrace_test.foo (in examples_stacktrace_new_test.go:42)
+	//         at stacktrace_test.foo (in examples_stacktrace_new_test.go:41)
 	//     Caused by: bar
 	//         at stacktrace_test.bar (in examples_stacktrace_new_test.go:47)
 	//     Caused by: baz
@@ -27,7 +26,7 @@ func ExampleStackTraceNew() {
 	//         at stacktrace_test.ExampleStackTraceNew (in examples_stacktrace_new_test.go:10)
 	//
 	// Reversed:
-	// Error: wrapped: foo
+	// Error: baz: bar: to foo or not: foo
 	//     Ends here:
 	//         at stacktrace_test.ExampleStackTraceNew (in examples_stacktrace_new_test.go:10)
 	//     Caused by: baz
@@ -35,11 +34,12 @@ func ExampleStackTraceNew() {
 	//     Caused by: bar
 	//         at stacktrace_test.bar (in examples_stacktrace_new_test.go:47)
 	//     Origin is:
-	//         at stacktrace_test.foo (in examples_stacktrace_new_test.go:42)
+	//         at stacktrace_test.foo (in examples_stacktrace_new_test.go:41)
 }
 
 func foo() error {
 	err := stacktrace.New("foo")
+	err = fmt.Errorf("to foo or not: %w", err)
 	return err
 }
 
