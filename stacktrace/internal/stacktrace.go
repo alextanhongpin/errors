@@ -9,9 +9,14 @@ import (
 var MaxDepth = 32
 
 func New(msg string, args ...any) error {
+	stack := callers(2)
+	pc, _ := head(stack)
+
 	return &ErrorTrace{
 		err:   fmt.Errorf(msg, args...),
-		stack: callers(2), // Skips [New, caller]
+		stack: stack, // Skips [New, caller]
+		cause: fmt.Sprintf(msg, args...),
+		pc:    pc,
 	}
 }
 
@@ -25,9 +30,14 @@ func WithStack(err error) error {
 		return t
 	}
 
+	stack := callers(2)
+	pc, _ := head(stack)
+
 	return &ErrorTrace{
 		err:   err,
-		stack: callers(2), // Skips [New, caller]
+		stack: stack, // Skips [New, caller]
+		cause: err.Error(),
+		pc:    pc,
 	}
 }
 
@@ -123,7 +133,7 @@ func (e *ErrorTrace) StackTrace() []uintptr {
 func (e *ErrorTrace) Error() string {
 	// Wrap the cause. This should be the same behaviour as
 	// github.com/pkg/errors.
-	if len(e.cause) > 0 {
+	if len(e.cause) > 0 && e.cause != e.err.Error() {
 		return fmt.Sprintf("%s: %s", e.cause, e.err.Error())
 	}
 
@@ -225,4 +235,12 @@ func frameKey(pc uintptr) runtime.Frame {
 		Function: f.Function,
 		Line:     f.Line,
 	}
+}
+
+func head[T any](ts []T) (t T, ok bool) {
+	if len(ts) > 0 {
+		return ts[0], true
+	}
+
+	return
 }

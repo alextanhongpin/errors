@@ -57,7 +57,7 @@ func ExampleSetMaxDepth() {
 
 	// Output:
 	// Error: at depth 11: at depth 10: at depth 9: at depth 8: at depth 7: at depth 6: at depth 5: at depth 4: at depth 3: at depth 2: at depth 1: at depth 0: depth 0
-	//     Origin is:
+	//     Origin is: depth 0
 	//         at stacktrace_test.dive.func1 (in examples_set_max_depth_test.go:13)
 	//     Caused by: at depth 0
 	//         at stacktrace_test.dive.func1 (in examples_set_max_depth_test.go:20)

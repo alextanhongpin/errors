@@ -16,7 +16,7 @@ func ExampleStackTraceNew() {
 
 	// Output:
 	// Error: baz: bar: to foo or not: foo
-	//     Origin is:
+	//     Origin is: foo
 	//         at stacktrace_test.foo (in examples_stacktrace_new_test.go:41)
 	//     Caused by: bar
 	//         at stacktrace_test.bar (in examples_stacktrace_new_test.go:47)
@@ -33,7 +33,7 @@ func ExampleStackTraceNew() {
 	//         at stacktrace_test.baz (in examples_stacktrace_new_test.go:51)
 	//     Caused by: bar
 	//         at stacktrace_test.bar (in examples_stacktrace_new_test.go:47)
-	//     Origin is:
+	//     Origin is: foo
 	//         at stacktrace_test.foo (in examples_stacktrace_new_test.go:41)
 }
 

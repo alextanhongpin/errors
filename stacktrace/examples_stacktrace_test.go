@@ -29,7 +29,7 @@ func ExampleStackTrace() {
 	// [
 	//  {
 	//   "id": 1,
-	//   "cause": "",
+	//   "cause": "root",
 	//   "file": "/Users/alextanhongpin/Documents/golang/src/github.com/alextanhongpin/errors/stacktrace/examples_stacktrace_test.go",
 	//   "line": 11,
 	//   "function": "github.com/alextanhongpin/errors/stacktrace_test.root"
