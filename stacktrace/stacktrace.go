@@ -33,8 +33,8 @@ func Wrap(err error) error {
 }
 
 // Annotate annotates an error with cause.
-func Annotate(err error, cause string) error {
-	return internal.Wrap(err, cause)
+func Annotate(err error, cause string, args ...any) error {
+	return internal.Wrap(err, fmt.Sprintf(cause, args...))
 }
 
 func Sprint(err error, reversed bool) string {
@@ -47,6 +47,10 @@ func StackTrace(err error) []Frame {
 
 func Unwrap(err error) ([]uintptr, map[uintptr]string) {
 	return internal.Unwrap(err)
+}
+
+func SetMaxDepth(depth int) {
+	internal.MaxDepth = depth
 }
 
 type Frame struct {
@@ -108,7 +112,7 @@ func sprint(err error, reversed bool) string {
 	sb.WriteString(err.Error())
 	sb.WriteRune('\n')
 
-	pcs, cause := Unwrap(err)
+	pcs, cause := internal.Unwrap(err)
 	pcs = filterFrames(pcs)
 	pcs, cause = prettyCause(pcs, cause)
 	if reversed {

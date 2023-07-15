@@ -6,19 +6,10 @@ import (
 	"runtime"
 )
 
-type node int
-
-const (
-	none node = iota // Don't expose stacktrace.
-	root             // There can only be one root with stacktrace.
-	leaf             // There can be multiple leaf with stacktrace.
-)
-
-const depth = 32
+var MaxDepth = 32
 
 func New(msg string, args ...any) error {
 	return &ErrorTrace{
-		node:  root,
 		err:   fmt.Errorf(msg, args...),
 		stack: callers(2), // Skips [New, caller]
 	}
@@ -35,7 +26,6 @@ func WithStack(err error) error {
 	}
 
 	return &ErrorTrace{
-		node:  root,
 		err:   err,
 		stack: callers(2), // Skips [New, caller]
 	}
@@ -71,21 +61,14 @@ func wrap(err error, cause string, skip int) *ErrorTrace {
 	}
 
 	stack := callers(skip + 1)
-	for _, pc := range stack {
+	for i, pc := range stack {
 		if !seen[frameKey(pc)] {
+			stack = callers(skip + 1 + i)
 			break
 		}
 	}
 
-	var node node
-	if len(stack) > 0 {
-		node = leaf
-	} else {
-		node = none
-	}
-
 	return &ErrorTrace{
-		node:  node,
 		err:   err,
 		stack: stack,
 		cause: cause,
@@ -93,19 +76,15 @@ func wrap(err error, cause string, skip int) *ErrorTrace {
 }
 
 type ErrorTrace struct {
-	node  node
 	err   error
 	stack []uintptr
 	cause string
 }
 
 func (e *ErrorTrace) StackTrace() []uintptr {
-	// Only expose at the root and the leaf node.
-	if e.node != none {
-		return e.stack
-	}
-
-	return nil
+	pcs := make([]uintptr, len(e.stack))
+	copy(pcs, e.stack)
+	return pcs
 }
 
 func (e *ErrorTrace) Error() string {
@@ -136,7 +115,7 @@ func unwrap(err error) ([]uintptr, map[uintptr]string) {
 		}
 
 		var ordered []uintptr
-		frames := runtime.CallersFrames(t.stack)
+		frames := runtime.CallersFrames(t.StackTrace())
 		for {
 			f, more := frames.Next()
 			if f.Function == "" {
@@ -183,14 +162,14 @@ func unwrap(err error) ([]uintptr, map[uintptr]string) {
 }
 
 func callers(skip int) []uintptr {
-	var pc [depth]uintptr
+	pcs := make([]uintptr, MaxDepth)
 	// skip [runtime.callers, callers]
-	n := runtime.Callers(skip+2, pc[:])
+	n := runtime.Callers(skip+2, pcs)
 	if n == 0 {
 		return nil
 	}
 
-	var pcs = pc[:n]
+	pcs = pcs[:n]
 	return pcs
 }
 
