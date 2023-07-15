@@ -17,20 +17,20 @@ type Cause struct {
 }
 
 // New returns a new Sentinel error.
-func New(code codes.Code, kind, msg string) error {
+func New(code codes.Code, kind, msg string, args ...any) error {
 	return &Cause{
 		code: code,
 		kind: kind,
-		msg:  msg,
+		msg:  fmt.Sprintf(msg, args...),
 	}
 }
 
 // New returns a new Sentinel error.
-func NewWithHint[T any](code codes.Code, kind, msg string) Hint[T] {
+func NewWithHint[T any](code codes.Code, kind, msg string, args ...any) Hint[T] {
 	return &Cause{
 		code: code,
 		kind: kind,
-		msg:  msg,
+		msg:  fmt.Sprintf(msg, args...),
 	}
 }
 
