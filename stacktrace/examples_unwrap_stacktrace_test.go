@@ -28,7 +28,7 @@ func ExampleUnwrap() {
 	// true
 	// 7
 	// 7
-	// 0
+	// 1
 	// Error: bad request
 	//         at stacktrace_test.ExampleUnwrap (in examples_unwrap_stacktrace_test.go:11)
 }

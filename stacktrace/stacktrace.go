@@ -29,12 +29,12 @@ func New(msg string, args ...any) error {
 
 // Wrap wraps an error with stacktrace.
 func Wrap(err error) error {
-	return internal.Wrap(err, "")
+	return internal.Wrap(err)
 }
 
 // Annotate annotates an error with cause.
 func Annotate(err error, cause string, args ...any) error {
-	return internal.Wrap(err, fmt.Sprintf(cause, args...))
+	return internal.Annotate(err, fmt.Sprintf(cause, args...))
 }
 
 func Sprint(err error, reversed bool) string {
@@ -205,6 +205,8 @@ func prettyCause(pcs []uintptr, cause map[uintptr]string) ([]uintptr, map[uintpt
 	switch len(pcs) {
 	case 0:
 	case 1:
+		// This is the origin, don't display any cause (which is itself).
+		cause = nil
 	default:
 		pc := pcs[0]
 		// Display the first line as "Origin is:".
@@ -233,6 +235,7 @@ func prettyCause(pcs []uintptr, cause map[uintptr]string) ([]uintptr, map[uintpt
 			cause[pc] = tail
 		}
 	}
+
 	return pcs, cause
 }
 

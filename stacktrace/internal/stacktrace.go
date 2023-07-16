@@ -20,7 +20,7 @@ func New(msg string, args ...any) error {
 	}
 }
 
-func WithStack(err error) error {
+func Wrap(err error) error {
 	if err == nil {
 		return nil
 	}
@@ -35,19 +35,19 @@ func WithStack(err error) error {
 
 	return &ErrorTrace{
 		err:   err,
-		stack: stack, // Skips [New, caller]
+		stack: stack, // Skips [Wrap, caller]
 		cause: err.Error(),
 		pc:    pc,
 	}
 }
 
-func Wrap(err error, cause string) error {
+func Annotate(err error, cause string) error {
 	if err == nil {
 		return nil
 	}
 
-	// Skips [Wrap, caller]
-	return wrap(err, cause, 2)
+	// Skips [Annotate, caller]
+	return annotate(err, cause, 2)
 }
 
 func Unwrap(err error) ([]uintptr, map[uintptr]string) {
@@ -58,7 +58,7 @@ func Unwrap(err error) ([]uintptr, map[uintptr]string) {
 	return unwrap(err)
 }
 
-func wrap(err error, cause string, skip int) *ErrorTrace {
+func annotate(err error, cause string, skip int) *ErrorTrace {
 	if err == nil {
 		return nil
 	}

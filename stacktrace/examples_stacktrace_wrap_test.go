@@ -19,7 +19,7 @@ func ExampleStackTraceWrap() {
 
 	// Output:
 	// Error: user not found
-	//     Origin is:
+	//     Origin is: user not found
 	//         at stacktrace_test.findUser (in examples_stacktrace_wrap_test.go:36)
 	//     Ends here:
 	//         at stacktrace_test.ExampleStackTraceWrap (in examples_stacktrace_wrap_test.go:13)
@@ -28,7 +28,7 @@ func ExampleStackTraceWrap() {
 	// Error: user not found
 	//     Ends here:
 	//         at stacktrace_test.ExampleStackTraceWrap (in examples_stacktrace_wrap_test.go:13)
-	//     Origin is:
+	//     Origin is: user not found
 	//         at stacktrace_test.findUser (in examples_stacktrace_wrap_test.go:36)
 }
 
