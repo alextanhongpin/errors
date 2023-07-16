@@ -8,15 +8,30 @@ import (
 	"github.com/alextanhongpin/errors/codes"
 )
 
-type PayoutDeclinedDetail struct {
+type PayoutDeclinedErrorDetail struct {
 	PayoutID string
 	Reason   string
 }
 
-var ErrPayoutDeclined = causes.NewWithHint[PayoutDeclinedDetail](codes.Conflict, "payout/declined", "Payout is declined")
+// Use alias to shorten the type detail.
+type PO01 = PayoutDeclinedErrorDetail
+
+var ErrPayoutDeclined = causes.NewWithHint[PO01](codes.Conflict, "payout/declined", "Payout is declined")
+
+// Alternative is to define a function to ensure the error is always wrapped.
+
+func PayoutDeclinedError(detail PayoutDeclinedErrorDetail) error {
+	return causes.WrapDetail(ErrPayoutDeclined, detail)
+}
 
 func ExampleNewWithHint() {
-	err := causes.WrapDetail(ErrPayoutDeclined, PayoutDeclinedDetail{
+	err := PayoutDeclinedError(PayoutDeclinedErrorDetail{
+		PayoutID: "PO-42",
+		Reason:   "Insufficient balance in account",
+	})
+
+	// Or
+	err = causes.WrapDetail(ErrPayoutDeclined, PayoutDeclinedErrorDetail{
 		PayoutID: "PO-42",
 		Reason:   "Insufficient balance in account",
 	})
@@ -30,15 +45,20 @@ func ExampleNewWithHint() {
 		fmt.Println(c.Error())
 	}
 
-	var d *causes.Detail[PayoutDeclinedDetail]
+	var d *causes.Detail[PayoutDeclinedErrorDetail]
 	if errors.As(err, &d) {
-		fmt.Printf("%#v", d.Detail())
+		fmt.Printf("%#v\n", d.Detail())
 	}
+
+	fmt.Println(d.Unwrap() == c)
+	fmt.Println(d.Unwrap() == ErrPayoutDeclined)
 
 	// Output:
 	// true
 	// conflict
 	// payout/declined
 	// Payout is declined
-	// causes_test.PayoutDeclinedDetail{PayoutID:"PO-42", Reason:"Insufficient balance in account"}
+	// causes_test.PayoutDeclinedErrorDetail{PayoutID:"PO-42", Reason:"Insufficient balance in account"}
+	// true
+	// true
 }

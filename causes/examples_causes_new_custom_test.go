@@ -1,6 +1,7 @@
 package causes_test
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 
@@ -29,11 +30,11 @@ func (e *UserNotFoundError) Unwrap() error {
 
 // Error is an customised error message.
 func (e *UserNotFoundError) Error() string {
-	return fmt.Sprintf("%s: %q", e.Error(), e.UserID)
+	return fmt.Sprintf("%s: %q", e.error.Error(), e.UserID)
 }
 
 func ExampleNewCustom() {
-	var err error = NewUserNotFoundError("user-3173")
+	var err error = fmt.Errorf("%w: %w", NewUserNotFoundError("user-3173"), sql.ErrNoRows)
 	fmt.Println(errors.Is(err, ErrUserNotFound))
 
 	var c *causes.Cause

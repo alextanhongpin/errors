@@ -27,11 +27,7 @@ func New(code codes.Code, kind, msg string, args ...any) error {
 
 // New returns a new Sentinel error.
 func NewWithHint[T any](code codes.Code, kind, msg string, args ...any) Hint[T] {
-	return &Cause{
-		code: code,
-		kind: kind,
-		msg:  fmt.Sprintf(msg, args...),
-	}
+	return New(code, kind, msg, args...)
 }
 
 func (c *Cause) Code() codes.Code {
@@ -67,7 +63,6 @@ func (c *Cause) Is(err error) bool {
 		c.kind == cause.kind
 }
 
-// Hint hints that the error should be wrapped with additional data later.
 type Hint[T any] error
 
 // Detail wraps an error with details.
@@ -84,6 +79,7 @@ func (d *Detail[T]) Unwrap() error {
 	return d.error
 }
 
+// WrapDetail wraps an error Hint with detail.
 func WrapDetail[T any](err Hint[T], t T) error {
 	return &Detail[T]{
 		error: err,
