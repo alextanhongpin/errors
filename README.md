@@ -1,5 +1,9 @@
 # Errors
 
+
+[![](https://godoc.org/github.com/alextanhongpin/errors?status.svg)](http://godoc.org/github.com/alextanhongpin/errors)
+
+
 The `errors` package solves some of the usecases that I discovered when working with errors in golang.
 
 That includes
