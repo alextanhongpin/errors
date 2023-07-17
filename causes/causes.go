@@ -9,28 +9,61 @@ import (
 	"github.com/alextanhongpin/errors/codes"
 )
 
-// Cause represents the error cause.
-type Cause struct {
-	code codes.Code
-	kind string
-	msg  string
+// Detail needs to be implemented by errors that returns detail.
+type Detail interface {
+	Detail() detail
 }
 
-// New returns a new Sentinel error.
+// Using an interface instead of struct allows for detail to be chained later
+// for different operations.
+type detail interface {
+	Code() codes.Code
+	Kind() string
+	Message() string
+	Data() any
+}
+
+// hint hints that an errorHint should be wrapped with detail before it can be
+// promoted to an error.
+type hint[T any] interface {
+	Is(error) bool
+	Wrap(T) error
+	Unwrap(detail) (T, bool)
+}
+
+// New returns a new errorDetail.
 func New(code codes.Code, kind, msg string, args ...any) error {
-	return &Cause{
+	return &errorDetail{
 		code: code,
 		kind: kind,
 		msg:  fmt.Sprintf(msg, args...),
 	}
 }
 
-// New returns a new Sentinel error.
-func NewWithHint[T any](code codes.Code, kind, msg string, args ...any) Hint[T] {
-	return New(code, kind, msg, args...)
+// NewHint returns a partial error that needs to be fulfilled with the hinted
+// type.
+func NewHint[T any](code codes.Code, kind, msg string, args ...any) hint[T] {
+	return &errorHint[T]{
+		err: &errorDetail{
+			code: code,
+			kind: kind,
+			msg:  fmt.Sprintf(msg, args...),
+		},
+	}
 }
 
-func (c *Cause) Code() codes.Code {
+type errorDetail struct {
+	code codes.Code
+	kind string
+	msg  string
+	data any
+}
+
+func (c *errorDetail) Detail() detail {
+	return c
+}
+
+func (c *errorDetail) Code() codes.Code {
 	return c.code
 }
 
@@ -42,20 +75,28 @@ func (c *Cause) Code() codes.Code {
 // - uri based, e.g. http://schema/user/not_found.json
 //
 // Kind must be unique.
-func (c *Cause) Kind() string {
+func (c *errorDetail) Kind() string {
 	return c.kind
 }
 
-func (c *Cause) Error() string {
+func (c *errorDetail) Error() string {
 	return c.msg
 }
 
-func (c *Cause) String() string {
+func (c *errorDetail) Message() string {
+	return c.msg
+}
+
+func (c *errorDetail) Data() any {
+	return c.data
+}
+
+func (c *errorDetail) String() string {
 	return fmt.Sprintf("%s/%s: %s", c.code, c.kind, c.msg)
 }
 
-func (c *Cause) Is(err error) bool {
-	var cause *Cause
+func (c *errorDetail) Is(err error) bool {
+	var cause *errorDetail
 	ok := errors.As(err, &cause)
 
 	return ok &&
@@ -63,26 +104,21 @@ func (c *Cause) Is(err error) bool {
 		c.kind == cause.kind
 }
 
-type Hint[T any] error
-
-// Detail wraps an error with details.
-type Detail[T any] struct {
-	error
-	t T
+type errorHint[T any] struct {
+	err *errorDetail
 }
 
-func (d *Detail[T]) Detail() T {
-	return d.t
+func (e *errorHint[T]) Is(err error) bool {
+	return errors.Is(err, e.err)
 }
 
-func (d *Detail[T]) Unwrap() error {
-	return d.error
+func (e *errorHint[T]) Wrap(t T) error {
+	cp := *e.err
+	cp.data = t
+	return &cp
 }
 
-// WrapDetail wraps an error Hint with detail.
-func WrapDetail[T any](err Hint[T], t T) error {
-	return &Detail[T]{
-		error: err,
-		t:     t,
-	}
+func (e *errorHint[T]) Unwrap(det detail) (T, bool) {
+	t, ok := det.Data().(T)
+	return t, ok
 }

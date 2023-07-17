@@ -14,12 +14,14 @@ func ExampleCausesConvert() {
 	var err error = ErrProductNotFound
 	fmt.Println(errors.Is(err, ErrProductNotFound))
 
-	var c *causes.Cause
+	var c causes.Detail
 	if errors.As(err, &c) {
-		fmt.Println(c.Code())
-		fmt.Println(c.Kind())
-		fmt.Println(c.Error())
-		fmt.Println(codes.HTTP(c.Code()))
+		d := c.Detail()
+		fmt.Println(d.Code())
+		fmt.Println(d.Kind())
+		fmt.Println(d.Message())
+		fmt.Println(d.Data())
+		fmt.Println(codes.HTTP(d.Code()))
 	}
 
 	// Output:
@@ -27,5 +29,6 @@ func ExampleCausesConvert() {
 	// not_found
 	// product/not_found
 	// The product is not found
+	// <nil>
 	// 404
 }

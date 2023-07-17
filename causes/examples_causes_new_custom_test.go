@@ -37,11 +37,13 @@ func ExampleNewCustom() {
 	var err error = fmt.Errorf("%w: %w", NewUserNotFoundError("user-3173"), sql.ErrNoRows)
 	fmt.Println(errors.Is(err, ErrUserNotFound))
 
-	var c *causes.Cause
+	var c causes.Detail
 	if errors.As(err, &c) {
-		fmt.Println(c.Code())
-		fmt.Println(c.Kind())
-		fmt.Println(c.Error())
+		d := c.Detail()
+		fmt.Println(d.Code())
+		fmt.Println(d.Kind())
+		fmt.Println(d.Message())
+		fmt.Println(d.Data())
 	}
 
 	var d *UserNotFoundError
@@ -54,5 +56,6 @@ func ExampleNewCustom() {
 	// not_found
 	// user/not_found
 	// The user does not exists or may have been deleted
+	// <nil>
 	// user-3173
 }
