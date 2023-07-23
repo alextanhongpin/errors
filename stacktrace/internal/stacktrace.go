@@ -6,39 +6,15 @@ import (
 	"runtime"
 )
 
+// MaxDepth is configurable.
 var MaxDepth = 32
 
 func New(msg string, args ...any) error {
-	stack := callers(2)
-	pc, _ := head(stack)
-
-	return &ErrorTrace{
-		err:   fmt.Errorf(msg, args...),
-		stack: stack, // Skips [New, caller]
-		cause: fmt.Sprintf(msg, args...),
-		pc:    pc,
-	}
+	return newCaller(2, msg, args...)
 }
 
 func Wrap(err error) error {
-	if err == nil {
-		return nil
-	}
-
-	var t *ErrorTrace
-	if errors.As(err, &t) {
-		return t
-	}
-
-	stack := callers(2)
-	pc, _ := head(stack)
-
-	return &ErrorTrace{
-		err:   err,
-		stack: stack, // Skips [Wrap, caller]
-		cause: err.Error(),
-		pc:    pc,
-	}
+	return wrapCaller(2, err)
 }
 
 func Annotate(err error, cause string) error {
@@ -47,7 +23,7 @@ func Annotate(err error, cause string) error {
 	}
 
 	// Skips [Annotate, caller]
-	return annotate(err, cause, 2)
+	return annotateCaller(2, err, cause)
 }
 
 func Unwrap(err error) ([]uintptr, map[uintptr]string) {
@@ -58,7 +34,40 @@ func Unwrap(err error) ([]uintptr, map[uintptr]string) {
 	return unwrap(err)
 }
 
-func annotate(err error, cause string, skip int) *ErrorTrace {
+func newCaller(skip int, msg string, args ...any) error {
+	stack := callers(skip + 1)
+	pc, _ := head(stack)
+
+	return &ErrorTrace{
+		err:   fmt.Errorf(msg, args...),
+		stack: stack, // Skips [New, caller]
+		cause: fmt.Sprintf(msg, args...),
+		pc:    pc,
+	}
+}
+
+func wrapCaller(skip int, err error) error {
+	if err == nil {
+		return nil
+	}
+
+	var t *ErrorTrace
+	if errors.As(err, &t) {
+		return t
+	}
+
+	stack := callers(skip + 1)
+	pc, _ := head(stack)
+
+	return &ErrorTrace{
+		err:   err,
+		stack: stack, // Skips [Wrap, caller]
+		cause: err.Error(),
+		pc:    pc,
+	}
+}
+
+func annotateCaller(skip int, err error, cause string) *ErrorTrace {
 	if err == nil {
 		return nil
 	}
@@ -80,7 +89,7 @@ func annotate(err error, cause string, skip int) *ErrorTrace {
 		}
 	}
 
-	// The first element in the stack is the PC where we want to annotate the
+	// The first element in the stack is the PC where we want to annotateCaller the
 	// cause.
 	// If may already exists in previous frames.
 	pc, ok := seen[frameKey(stack[0])]

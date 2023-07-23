@@ -16,6 +16,14 @@ const head = "Origin is:"
 const tail = "Ends here:"
 const body = "Caused by:"
 
+type stacktraceToggler interface {
+	New(msg string, args ...any) error
+	Wrap(error) error
+	Annotate(err error, cause string) error
+	Enable()
+	Disable()
+}
+
 // Skip runtime and testing package.
 // Skip files with underscore.
 // e.g. _testmain.go
@@ -37,12 +45,16 @@ func Annotate(err error, cause string, args ...any) error {
 	return internal.Annotate(err, fmt.Sprintf(cause, args...))
 }
 
-func Sprint(err error, reversed bool) string {
-	return sprint(err, reversed)
+func Sprint(err error) string {
+	return sprint(err, false)
 }
 
-func StackTrace(err error) []Frame {
-	return stacktrace(err)
+func SprintReversed(err error) string {
+	return sprint(err, true)
+}
+
+func Frames(err error) []Frame {
+	return frames(err)
 }
 
 func Unwrap(err error) ([]uintptr, map[uintptr]string) {
@@ -53,6 +65,12 @@ func SetMaxDepth(depth int) {
 	internal.MaxDepth = depth
 }
 
+// Caller returns the common methods that depends on the
+// skip with configurable skip.
+func Caller(skip int) stacktraceToggler {
+	return internal.Caller(skip)
+}
+
 type Frame struct {
 	ID       int    `json:"id"`
 	Cause    string `json:"cause"`
@@ -61,7 +79,7 @@ type Frame struct {
 	Function string `json:"function"`
 }
 
-func stacktrace(err error) []Frame {
+func frames(err error) []Frame {
 	if err == nil {
 		return nil
 	}

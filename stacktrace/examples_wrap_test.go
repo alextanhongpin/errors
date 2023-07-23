@@ -1,35 +1,38 @@
 package stacktrace_test
 
 import (
-	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/alextanhongpin/errors/stacktrace"
 )
 
+var ErrUserNotFound = errors.New("user not found")
+
 func ExampleWrap() {
-	err := handlePayout()
-	fmt.Println(stacktrace.Sprint(err, false))
+	err := findUser()
+
+	fmt.Println(stacktrace.Sprint(err))
 	fmt.Println()
 	fmt.Println("Reversed:")
-	fmt.Println(stacktrace.Sprint(err, true))
+	fmt.Println(stacktrace.SprintReversed(err))
 
 	// Output:
-	// Error: product "lego" not found: sql: no rows in result set
-	//     Origin is: product "lego" not found
-	//         at stacktrace_test.handlePayout (in examples_wrap_test.go:33)
+	// Error: user not found
+	//     Origin is: user not found
+	//         at stacktrace_test.findUser (in examples_wrap_test.go:36)
 	//     Ends here:
-	//         at stacktrace_test.ExampleWrap (in examples_wrap_test.go:11)
+	//         at stacktrace_test.ExampleWrap (in examples_wrap_test.go:13)
 	//
 	// Reversed:
-	// Error: product "lego" not found: sql: no rows in result set
+	// Error: user not found
 	//     Ends here:
-	//         at stacktrace_test.ExampleWrap (in examples_wrap_test.go:11)
-	//     Origin is: product "lego" not found
-	//         at stacktrace_test.handlePayout (in examples_wrap_test.go:33)
+	//         at stacktrace_test.ExampleWrap (in examples_wrap_test.go:13)
+	//     Origin is: user not found
+	//         at stacktrace_test.findUser (in examples_wrap_test.go:36)
 }
 
-func handlePayout() error {
-	err := stacktrace.Annotate(sql.ErrNoRows, `product "lego" not found`)
+func findUser() error {
+	err := stacktrace.Wrap(ErrUserNotFound)
 	return err
 }

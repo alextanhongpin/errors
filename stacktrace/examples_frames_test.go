@@ -17,9 +17,9 @@ func child() error {
 	return err
 }
 
-func ExampleStackTrace() {
+func ExampleFrames() {
 	err := child()
-	b, err := json.MarshalIndent(stacktrace.StackTrace(err), "", " ")
+	b, err := json.MarshalIndent(stacktrace.Frames(err), "", " ")
 	if err != nil {
 		panic(err)
 	}
@@ -30,23 +30,23 @@ func ExampleStackTrace() {
 	//  {
 	//   "id": 1,
 	//   "cause": "root",
-	//   "file": "/Users/alextanhongpin/Documents/golang/src/github.com/alextanhongpin/errors/stacktrace/examples_stacktrace_test.go",
+	//   "file": "/Users/alextanhongpin/Documents/golang/src/github.com/alextanhongpin/errors/stacktrace/examples_frames_test.go",
 	//   "line": 11,
 	//   "function": "github.com/alextanhongpin/errors/stacktrace_test.root"
 	//  },
 	//  {
 	//   "id": 2,
 	//   "cause": "child",
-	//   "file": "/Users/alextanhongpin/Documents/golang/src/github.com/alextanhongpin/errors/stacktrace/examples_stacktrace_test.go",
+	//   "file": "/Users/alextanhongpin/Documents/golang/src/github.com/alextanhongpin/errors/stacktrace/examples_frames_test.go",
 	//   "line": 16,
 	//   "function": "github.com/alextanhongpin/errors/stacktrace_test.child"
 	//  },
 	//  {
 	//   "id": 3,
 	//   "cause": "",
-	//   "file": "/Users/alextanhongpin/Documents/golang/src/github.com/alextanhongpin/errors/stacktrace/examples_stacktrace_test.go",
+	//   "file": "/Users/alextanhongpin/Documents/golang/src/github.com/alextanhongpin/errors/stacktrace/examples_frames_test.go",
 	//   "line": 21,
-	//   "function": "github.com/alextanhongpin/errors/stacktrace_test.ExampleStackTrace"
+	//   "function": "github.com/alextanhongpin/errors/stacktrace_test.ExampleFrames"
 	//  }
 	// ]
 }

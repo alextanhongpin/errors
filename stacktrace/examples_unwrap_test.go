@@ -22,7 +22,7 @@ func ExampleUnwrap() {
 	pcs, causes := stacktrace.Unwrap(err)
 	fmt.Println(len(pcs))
 	fmt.Println(len(causes))
-	fmt.Println(stacktrace.Sprint(err, false))
+	fmt.Println(stacktrace.Sprint(err))
 
 	// Output:
 	// true
@@ -30,5 +30,5 @@ func ExampleUnwrap() {
 	// 7
 	// 1
 	// Error: bad request
-	//         at stacktrace_test.ExampleUnwrap (in examples_unwrap_stacktrace_test.go:11)
+	//         at stacktrace_test.ExampleUnwrap (in examples_unwrap_test.go:11)
 }
