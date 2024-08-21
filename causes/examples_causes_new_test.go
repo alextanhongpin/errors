@@ -14,9 +14,8 @@ func ExampleNew() {
 	var err error = ErrPayoutFrozen
 	fmt.Println(errors.Is(err, ErrPayoutFrozen))
 
-	var c causes.Detail
-	if errors.As(err, &c) {
-		d := c.Detail()
+	var d causes.Detail
+	if errors.As(err, &d) {
 		fmt.Println(d.Code())
 		fmt.Println(d.Kind())
 		fmt.Println(d.Message())

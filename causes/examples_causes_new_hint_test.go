@@ -26,9 +26,8 @@ func ExampleNewHint() {
 
 	fmt.Println(ErrPayoutDeclined.Is(err))
 
-	var c causes.Detail
-	if errors.As(err, &c) {
-		d := c.Detail()
+	var d causes.Detail
+	if errors.As(err, &d) {
 		fmt.Println(d.Code())
 		fmt.Println(d.Kind())
 		fmt.Println(d.Message())
@@ -37,7 +36,7 @@ func ExampleNewHint() {
 		fmt.Printf("%#v\n", d.Data())
 
 		// Assert as type `PayoutDeclinedErrorDetail`.
-		t, ok := ErrPayoutDeclined.Unwrap(d)
+		t, ok := ErrPayoutDeclined.Unwrap(err)
 		fmt.Printf("%#v\n", t)
 		fmt.Println(ok)
 	}

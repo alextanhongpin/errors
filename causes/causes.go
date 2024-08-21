@@ -9,26 +9,12 @@ import (
 	"github.com/alextanhongpin/errors/codes"
 )
 
-// Detail needs to be implemented by errors that returns detail.
-type Detail interface {
-	Detail() detail
-}
-
-// Using an interface instead of struct allows for detail to be chained later
-// for different operations.
-type detail interface {
-	Code() codes.Code
-	Kind() string
-	Message() string
-	Data() any
-}
-
 // hint hints that an errorHint should be wrapped with detail before it can be
 // promoted to an error.
 type hint[T any] interface {
 	Is(error) bool
 	Wrap(T) error
-	Unwrap(detail) (T, bool)
+	Unwrap(error) (T, bool)
 }
 
 // New returns a new errorDetail.
@@ -52,15 +38,19 @@ func NewHint[T any](code codes.Code, kind, msg string, args ...any) hint[T] {
 	}
 }
 
+// Detail allows replacing the implementation detail.
+type Detail interface {
+	Code() codes.Code
+	Data() any
+	Kind() string
+	Message() string
+}
+
 type errorDetail struct {
 	code codes.Code
 	kind string
 	msg  string
 	data any
-}
-
-func (c *errorDetail) Detail() detail {
-	return c
 }
 
 func (c *errorDetail) Code() codes.Code {
@@ -118,7 +108,11 @@ func (e *errorHint[T]) Wrap(t T) error {
 	return &cp
 }
 
-func (e *errorHint[T]) Unwrap(det detail) (T, bool) {
-	t, ok := det.Data().(T)
-	return t, ok
+func (e *errorHint[T]) Unwrap(err error) (v T, ok bool) {
+	var errDetail *errorDetail
+	if errors.As(err, &errDetail) {
+		v, ok = errDetail.data.(T)
+	}
+
+	return
 }
