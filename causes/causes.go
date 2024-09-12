@@ -13,12 +13,12 @@ import (
 // promoted to an error.
 type hint[T any] interface {
 	Is(error) bool
-	Wrap(T) error
+	Wrap(T) *errorDetail
 	Unwrap(error) (T, bool)
 }
 
 // New returns a new errorDetail.
-func New(code codes.Code, kind, msg string, args ...any) error {
+func New(code codes.Code, kind, msg string, args ...any) *errorDetail {
 	return &errorDetail{
 		code: code,
 		kind: kind,
@@ -44,6 +44,7 @@ type Detail interface {
 	Data() any
 	Kind() string
 	Message() string
+	Unwrap() error
 }
 
 type errorDetail struct {
@@ -51,6 +52,7 @@ type errorDetail struct {
 	kind string
 	msg  string
 	data any
+	err  error
 }
 
 func (c *errorDetail) Code() codes.Code {
@@ -81,11 +83,25 @@ func (c *errorDetail) Data() any {
 	return c.data
 }
 
+func (c *errorDetail) Wrap(err error) error {
+	cp := *c
+	cp.err = err
+	return &cp
+}
+
+func (c *errorDetail) Unwrap() error {
+	return c.err
+}
+
 func (c *errorDetail) String() string {
 	return fmt.Sprintf("%s/%s: %s", c.code, c.kind, c.msg)
 }
 
 func (c *errorDetail) Is(err error) bool {
+	if errors.Is(c.err, err) {
+		return true
+	}
+
 	var cause *errorDetail
 	ok := errors.As(err, &cause)
 
@@ -102,7 +118,7 @@ func (e *errorHint[T]) Is(err error) bool {
 	return errors.Is(err, e.err)
 }
 
-func (e *errorHint[T]) Wrap(t T) error {
+func (e *errorHint[T]) Wrap(t T) *errorDetail {
 	cp := *e.err
 	cp.data = t
 	return &cp
