@@ -62,7 +62,7 @@ func ExampleFields_author_valid() {
 		},
 		Likes: []string{"music", "art"},
 	}
-	validateauthor(a)
+	validateAuthor(a)
 
 	// Output:
 	// is nil: true
@@ -81,7 +81,7 @@ func ExampleFields_author_valid_optional_likes() {
 			},
 		},
 	}
-	validateauthor(a)
+	validateAuthor(a)
 
 	// Output:
 	// is nil: true
@@ -95,7 +95,7 @@ func ExampleFields_author_invalid() {
 		Books: nil,
 		Likes: []string{"drugs", "weapons"},
 	}
-	validateauthor(a)
+	validateAuthor(a)
 
 	// Output:
 	// is nil: false
@@ -117,7 +117,7 @@ func ExampleFields_author_invalid_books() {
 			{Title: "A book", Year: 2000, Languages: []string{"English", "French"}},
 		},
 	}
-	validateauthor(a)
+	validateAuthor(a)
 
 	// Output:
 	// is nil: false
@@ -136,7 +136,7 @@ func ExampleFields_author_invalid_books() {
 	// }
 }
 
-func validateauthor(a *Author) {
+func validateAuthor(a *Author) {
 	err := a.Validate()
 	fmt.Println("is nil:", err == nil)
 	fmt.Println("err:", err)
