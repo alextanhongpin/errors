@@ -1,75 +1,158 @@
 package cause
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"maps"
 	"reflect"
 	"slices"
-	"strconv"
 	"strings"
 )
 
-type validate interface {
+type User struct {
+	Name    string
+	Age     int
+	Friend  *User
+	Friends []*User
+}
+
+func (u *User) Validate() error {
+	return Map{}.
+		Add("name", Required(u.Name)).
+		Add("age", Required(u.Age)).
+		Add("friend", u.Friend).
+		Add("friends", Slice(u.Friends)).
+		AsError()
+}
+
+func init() {
+	u := &User{
+		Name: "",
+		Friend: &User{
+			Name: "",
+		},
+		Friends: []*User{
+			{Name: "Alice"},
+			{Name: "Bob", Friend: &User{}},
+			{Name: "", Friend: &User{}},
+		},
+	}
+
+	err := u.Validate()
+	fmt.Println(err)
+	b, err := json.MarshalIndent(err, "", "  ")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(string(b))
+}
+
+type validatable interface {
 	Validate() error
 }
 
-type validateMany interface {
-	Validate() map[int]error
+type mapError map[string]any
+
+func (me mapError) Error() string {
+	return fmt.Sprintf("invalid fields: %s", strings.Join(slices.Sorted(maps.Keys(me)), ", "))
 }
 
-type Fields map[string]any
+type Map map[string]any
 
-func (ve Fields) AsError() error {
-	if len(ve) == 0 {
+func (m Map) Required(name string, val any, other ...string) Map {
+	return m.Add(name, Required(val, other...))
+}
+
+func (m Map) Optional(name string, val any, other ...string) Map {
+	return m.Add(name, Optional(val, other...))
+}
+
+func (m Map) Add(name string, val validatable) Map {
+	if isZero(val) {
+		return m
+	}
+
+	if err := val.Validate(); err != nil {
+		switch e := err.(type) {
+		case sliceError:
+			// If the error is a slice error, we convert it to a map.
+			for i, item := range e {
+				if isZero(item) {
+					continue
+				}
+				itemName := fmt.Sprintf("%s[%d]", name, i)
+				m[itemName] = item
+			}
+		case mapError:
+			// If the error is a map error, we merge it into the current map.
+			m[name] = e
+		case error:
+			m[name] = e.Error()
+		default:
+			// If the error is not a string, we wrap it in a map.
+			m[name] = e
+		}
+	}
+	return m
+}
+
+func (m Map) AsError() error {
+	me := make(mapError)
+	for name, val := range m {
+		if isZero(val) {
+			continue
+		}
+		me[name] = val
+	}
+	if len(me) == 0 {
+		return nil
+	}
+	return me
+}
+
+func Optional(value any, msgs ...string) validatable {
+	if isZero(value) {
+		return &errorStrings{}
+	}
+
+	switch v := value.(type) {
+	case validatable:
+		return v
+	default:
+		return &errorStrings{msgs}
+	}
+}
+
+func Required(value any, msgs ...string) validatable {
+	if isZero(value) {
+		return &errorStrings{[]string{"required"}}
+	}
+	switch v := value.(type) {
+	case validatable:
+		return v
+	default:
+		return &errorStrings{msgs}
+	}
+}
+
+type errorStrings struct {
+	msgs []string
+}
+
+func (err *errorStrings) Validate() error {
+	msgs := filterZero(err.msgs)
+	if len(msgs) == 0 {
 		return nil
 	}
 
-	fe := make(fieldError)
-	maps.Copy(fe, ve)
-	return fe
+	return errors.New(strings.Join(msgs, ", "))
 }
 
-func (ve Fields) Optional(key string, value any, other ...string) Fields {
-	return ve.validate(key, value, false, other...)
-}
+type sliceError map[int]any
 
-func (ve Fields) Required(key string, value any, other ...string) Fields {
-	return ve.validate(key, value, true, other...)
-}
-
-func (ve Fields) validate(key string, value any, required bool, other ...string) Fields {
-	if isZero(value) {
-		if required {
-			ve[key] = "required"
-		}
-
-		return ve
-	}
-
-	if v, ok := value.(validate); ok {
-		if len(other) > 0 {
-			panic("cannot use validate with other messages")
-		}
-
-		ve[key] = v.Validate()
-	} else if v, ok := value.(validateMany); ok {
-		if len(other) > 0 {
-			panic("cannot use validateMany with other messages")
-		}
-
-		for i, err := range v.Validate() {
-			if err != nil {
-				ve[fmt.Sprintf("%s[%d]", key, i)] = err
-			}
-		}
-	} else {
-		if err := stringSliceError(other).Validate(); err != nil {
-			ve[key] = err
-		}
-	}
-
-	return ve
+func (se sliceError) Error() string {
+	return "TODO: SliceError"
 }
 
 func When(valid bool, msg string) string {
@@ -80,51 +163,74 @@ func When(valid bool, msg string) string {
 	return ""
 }
 
-type validateFunc[T any] struct {
-	val T
-	fn  func(T) error
-}
+type SliceError []validatable
 
-func (vf *validateFunc[T]) Validate() error {
-	if isZero(vf.val) {
-		return nil
+func SliceFunc[T any](vs []T, fn func(T) error) SliceError {
+	res := make([]validatable, len(vs))
+	for i, v := range vs {
+		res[i] = &value[T]{val: v, fn: fn}
 	}
 
-	return vf.fn(vf.val)
+	return res
+
 }
 
-func SliceFunc[T any](s []T, fn func(T) error) validateMany {
+func Slice[T validatable](vs []T) SliceError {
+	res := make([]validatable, len(vs))
+	for i, v := range vs {
+		res[i] = v
+	}
+
+	return res
+}
+
+func (s SliceError) Validate() error {
 	if len(s) == 0 {
 		return nil
 	}
 
-	res := make([]validate, len(s))
-	for i, item := range s {
-		res[i] = &validateFunc[T]{val: item, fn: fn}
-	}
-
-	return Slice(res)
-}
-
-func Slice[T validate](s []T) validateMany {
-	if len(s) == 0 {
-		return nil
-	}
-
-	se := make(sliceIndexError)
+	se := make(sliceError)
 
 	for i, item := range s {
 		if err := item.Validate(); err != nil {
-			var fe fieldError
-			if errors.As(err, &fe) {
-				se[i] = fe
-			} else {
-				se[i] = stringSliceError{err.Error()}
+			switch e := err.(type) {
+			case sliceError, mapError:
+				// If the error is a slice error, we convert it to a map.
+				se[i] = e
+			case error:
+				se[i] = e.Error()
+			default:
+				// If the error is not a string, we wrap it in a map.
+				se[i] = e
 			}
 		}
 	}
 
+	if len(se) == 0 {
+		return nil
+	}
+
 	return se
+}
+
+func filterZero[T comparable](s []T) []T {
+	var res []T
+	var zero T
+	for _, v := range s {
+		if v != zero {
+			res = append(res, v)
+		}
+	}
+	return res
+}
+
+type value[T any] struct {
+	val T
+	fn  func(T) error
+}
+
+func (v *value[T]) Validate() error {
+	return v.fn(v.val)
 }
 
 func isZero(t any) bool {
@@ -138,41 +244,4 @@ func isZero(t any) bool {
 	}
 
 	return v.IsZero()
-}
-
-type fieldError map[string]any
-
-func (fe fieldError) Error() string {
-	keys := slices.Sorted(maps.Keys(fe))
-	return fmt.Sprintf("invalid fields: %s", strings.Join(keys, ", "))
-}
-
-type stringSliceError []string
-
-func (s stringSliceError) Validate() error {
-	var res []string
-	for _, v := range s {
-		if v != "" {
-			res = append(res, v)
-		}
-	}
-	if len(res) == 0 {
-		return nil
-	}
-
-	return stringSliceError(res)
-}
-
-func (s stringSliceError) Error() string {
-	return strings.Join(s, ", ")
-}
-
-func (s stringSliceError) MarshalJSON() ([]byte, error) {
-	return []byte(strconv.Quote(s.Error())), nil
-}
-
-type sliceIndexError map[int]error
-
-func (se sliceIndexError) Validate() map[int]error {
-	return se
 }

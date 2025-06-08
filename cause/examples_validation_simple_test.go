@@ -13,9 +13,9 @@ type User struct {
 }
 
 func (u *User) Validate() error {
-	return cause.Fields{}.
-		Optional("age", u.Age, cause.When(u.Age < 13, "under age limit")).
+	return cause.Map{}.
 		Required("name", u.Name).
+		Optional("age", u.Age, cause.When(u.Age < 13, "under age limit")).
 		AsError()
 }
 
