@@ -8,14 +8,14 @@ import (
 )
 
 type User struct {
-	Name string
 	Age  int
+	Name string
 }
 
 func (u *User) Validate() error {
 	return cause.Fields{}.
+		Optional("age", u.Age, cause.When(u.Age < 13, "under age limit")).
 		Required("name", u.Name).
-		Optional("age", u.Age, cause.Cond(u.Age < 13, "under age limit")).
 		AsError()
 }
 

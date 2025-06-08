@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-type validatable interface {
+type validate interface {
 	Validate() error
 }
 
@@ -47,9 +47,9 @@ func (ve Fields) validate(key string, value any, required bool, other ...string)
 		return ve
 	}
 
-	if v, ok := value.(validatable); ok {
+	if v, ok := value.(validate); ok {
 		if len(other) > 0 {
-			panic("cannot use validatable with other messages")
+			panic("cannot use validate with other messages")
 		}
 
 		ve[key] = v.Validate()
@@ -72,7 +72,7 @@ func (ve Fields) validate(key string, value any, required bool, other ...string)
 	return ve
 }
 
-func Cond(valid bool, msg string) string {
+func When(valid bool, msg string) string {
 	if valid {
 		return msg
 	}
@@ -93,38 +93,38 @@ func (vf *validateFunc[T]) Validate() error {
 	return vf.fn(vf.val)
 }
 
-func Slice[T comparable](s []T, fn func(T) error) validateMany {
+func SliceFunc[T any](s []T, fn func(T) error) validateMany {
 	if len(s) == 0 {
 		return nil
 	}
 
-	res := make([]validatable, len(s))
+	res := make([]validate, len(s))
 	for i, item := range s {
 		res[i] = &validateFunc[T]{val: item, fn: fn}
 	}
 
-	return Collect(res)
+	return Slice(res)
 }
 
-func Collect[T validatable](s []T) validateMany {
+func Slice[T validate](s []T) validateMany {
 	if len(s) == 0 {
 		return nil
 	}
 
-	ei := make(errorIndex)
+	se := make(sliceIndexError)
 
 	for i, item := range s {
 		if err := item.Validate(); err != nil {
 			var fe fieldError
 			if errors.As(err, &fe) {
-				ei[i] = fe
+				se[i] = fe
 			} else {
-				ei[i] = stringSliceError{err.Error()}
+				se[i] = stringSliceError{err.Error()}
 			}
 		}
 	}
 
-	return ei
+	return se
 }
 
 func isZero(t any) bool {
@@ -171,8 +171,8 @@ func (s stringSliceError) MarshalJSON() ([]byte, error) {
 	return []byte(strconv.Quote(s.Error())), nil
 }
 
-type errorIndex map[int]error
+type sliceIndexError map[int]error
 
-func (ei errorIndex) Validate() map[int]error {
-	return ei
+func (se sliceIndexError) Validate() map[int]error {
+	return se
 }

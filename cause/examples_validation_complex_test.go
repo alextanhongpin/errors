@@ -18,9 +18,9 @@ type Author struct {
 func (a *Author) Validate() error {
 	return cause.Fields{}.
 		Required("name", a.Name).
-		Required("books", cause.Collect(a.Books)).
+		Required("books", cause.Slice(a.Books)).
 		// Required("books", cause.Slice(a.Books, (*Book).Validate)).
-		Optional("likes", cause.Slice(a.Likes, validateLike)).
+		Optional("likes", cause.SliceFunc(a.Likes, validateLike)).
 		AsError()
 }
 
@@ -45,8 +45,8 @@ type Book struct {
 func (b *Book) Validate() error {
 	return cause.Fields{}.
 		Required("title", b.Title).
-		Optional("year", b.Year, cause.Cond(b.Year < 2000, "too old")).
-		Optional("languages", len(b.Languages), cause.Cond(len(b.Languages) > 1, "does not support multilingual")).
+		Optional("year", b.Year, cause.When(b.Year < 2000, "too old")).
+		Optional("languages", len(b.Languages), cause.When(len(b.Languages) > 1, "does not support multilingual")).
 		AsError()
 }
 
