@@ -24,7 +24,7 @@ func New(code codes.Code, name, message string, args ...any) *Error {
 	return &Error{
 		Code:    code,
 		Name:    name,
-		Message: fmt.Errorf(message, args...).Error(),
+		Message: fmt.Sprintf(message, args...),
 		Details: make(map[string]any),
 	}
 }
