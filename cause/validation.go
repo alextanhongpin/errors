@@ -1,7 +1,6 @@
 package cause
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"maps"
@@ -9,44 +8,6 @@ import (
 	"slices"
 	"strings"
 )
-
-type User struct {
-	Name    string
-	Age     int
-	Friend  *User
-	Friends []*User
-}
-
-func (u *User) Validate() error {
-	return Map{}.
-		Add("name", Required(u.Name)).
-		Add("age", Required(u.Age)).
-		Add("friend", u.Friend).
-		Add("friends", Slice(u.Friends)).
-		AsError()
-}
-
-func init() {
-	u := &User{
-		Name: "",
-		Friend: &User{
-			Name: "",
-		},
-		Friends: []*User{
-			{Name: "Alice"},
-			{Name: "Bob", Friend: &User{}},
-			{Name: "", Friend: &User{}},
-		},
-	}
-
-	err := u.Validate()
-	fmt.Println(err)
-	b, err := json.MarshalIndent(err, "", "  ")
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(string(b))
-}
 
 type validatable interface {
 	Validate() error
@@ -152,7 +113,7 @@ func (err *errorStrings) Validate() error {
 type sliceError map[int]any
 
 func (se sliceError) Error() string {
-	return "TODO: SliceError"
+	return "SliceError"
 }
 
 func When(valid bool, msg string) string {
