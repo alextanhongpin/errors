@@ -11,7 +11,7 @@ import (
 
 var ErrStorage = cause.New(codes.Internal, "StorageError", "Storage error")
 
-func ExampleWrap() {
+func ExampleError_Wrap() {
 	var err error = ErrStorage.Wrap(sql.ErrNoRows)
 	fmt.Println("is sql.ErrNoRows?:", errors.Is(err, sql.ErrNoRows))
 	fmt.Println("is ErrStorage?:", errors.Is(err, ErrStorage))

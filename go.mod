@@ -1,10 +1,7 @@
 module github.com/alextanhongpin/errors
 
-go 1.20
+go 1.24.2
 
-require google.golang.org/grpc v1.56.2
+require google.golang.org/grpc v1.73.0
 
-require (
-	github.com/golang/protobuf v1.5.3 // indirect
-	google.golang.org/protobuf v1.31.0 // indirect
-)
+require golang.org/x/sys v0.33.0 // indirect
