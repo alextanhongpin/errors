@@ -2,6 +2,7 @@ package cause_test
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -18,19 +19,20 @@ func (a *Author) Validate() error {
 	return cause.Fields{}.
 		Required("name", a.Name).
 		Required("books", cause.Collect(a.Books)).
+		// Required("books", cause.Slice(a.Books, (*Book).Validate)).
 		Optional("likes", cause.Slice(a.Likes, validateLike)).
 		AsError()
 }
 
-func validateLike(in string) string {
+func validateLike(in string) error {
 	in = strings.ToLower(in)
 	switch {
 	case strings.Contains(in, "drugs"):
-		return "drugs not allowed"
+		return errors.New("drugs not allowed")
 	case strings.Contains(in, "weapons"):
-		return "weapons not allowed"
+		return errors.New("weapons not allowed")
 	default:
-		return ""
+		return nil
 	}
 }
 

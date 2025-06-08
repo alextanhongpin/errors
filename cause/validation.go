@@ -1,6 +1,7 @@
 package cause
 
 import (
+	"errors"
 	"fmt"
 	"maps"
 	"reflect"
@@ -79,20 +80,30 @@ func Cond(valid bool, msg string) string {
 	return ""
 }
 
-func Slice[T comparable](s []T, fn func(T) string) validateMany {
+type validateFunc[T any] struct {
+	val T
+	fn  func(T) error
+}
+
+func (vf *validateFunc[T]) Validate() error {
+	if isZero(vf.val) {
+		return nil
+	}
+
+	return vf.fn(vf.val)
+}
+
+func Slice[T comparable](s []T, fn func(T) error) validateMany {
 	if len(s) == 0 {
 		return nil
 	}
 
-	ei := make(errorIndex)
-
+	res := make([]validatable, len(s))
 	for i, item := range s {
-		if msg := fn(item); msg != "" {
-			ei[i] = stringSliceError([]string{msg})
-		}
+		res[i] = &validateFunc[T]{val: item, fn: fn}
 	}
 
-	return ei
+	return Collect(res)
 }
 
 func Collect[T validatable](s []T) validateMany {
@@ -104,7 +115,12 @@ func Collect[T validatable](s []T) validateMany {
 
 	for i, item := range s {
 		if err := item.Validate(); err != nil {
-			ei[i] = err
+			var fe fieldError
+			if errors.As(err, &fe) {
+				ei[i] = fe
+			} else {
+				ei[i] = stringSliceError{err.Error()}
+			}
 		}
 	}
 
