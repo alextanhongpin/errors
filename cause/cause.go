@@ -7,25 +7,35 @@ import (
 	"log/slog"
 	"maps"
 	"runtime/debug"
+	"slices"
 
 	"github.com/alextanhongpin/errors/codes"
 )
 
 type Error struct {
-	Code    codes.Code
-	Name    string
-	Message string
-	Details map[string]any
-	Stack   []byte
+	Attrs   []slog.Attr
 	Cause   error
+	Code    codes.Code
+	Details map[string]any
+	Message string
+	Name    string
+	Stack   []byte
 }
 
 func New(code codes.Code, name, message string, args ...any) *Error {
+	var attrs []slog.Attr
+	for _, arg := range args {
+		if _, ok := arg.(slog.Attr); ok {
+			attrs = append(attrs, arg.(slog.Attr))
+		}
+	}
+
 	return &Error{
+		Attrs:   attrs,
 		Code:    code,
-		Name:    name,
-		Message: fmt.Sprintf(message, args...),
 		Details: make(map[string]any),
+		Message: fmt.Sprintf(message, args...),
+		Name:    name,
 	}
 }
 
@@ -53,11 +63,11 @@ func (e *Error) Error() string {
 }
 
 func (e Error) LogValue() slog.Value {
-	attrs := []slog.Attr{
+	attrs := append([]slog.Attr{
 		slog.String("message", e.Message),
 		slog.String("code", e.Code.String()),
 		slog.String("name", e.Name),
-	}
+	}, e.Attrs...)
 
 	if len(e.Details) > 0 {
 		attrs = append(attrs, slog.Any("details", e.Details))
@@ -75,12 +85,13 @@ func (e *Error) StackTrace() []byte {
 
 func (e *Error) Clone() *Error {
 	return &Error{
-		Code:    e.Code,
-		Name:    e.Name,
-		Message: e.Message,
-		Details: maps.Clone(e.Details),
-		Stack:   bytes.Clone(e.Stack),
+		Attrs:   slices.Clone(e.Attrs),
 		Cause:   e.Cause,
+		Code:    e.Code,
+		Details: maps.Clone(e.Details),
+		Message: e.Message,
+		Name:    e.Name,
+		Stack:   bytes.Clone(e.Stack),
 	}
 }
 
@@ -93,5 +104,11 @@ func (e *Error) WithDetails(details map[string]any) *Error {
 func (e *Error) WithStack() *Error {
 	err := e.Clone()
 	err.Stack = debug.Stack()
+	return err
+}
+
+func (e *Error) WithAttrs(attrs ...slog.Attr) *Error {
+	err := e.Clone()
+	err.Attrs = append(err.Attrs, attrs...)
 	return err
 }
