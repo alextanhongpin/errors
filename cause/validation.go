@@ -1,7 +1,6 @@
 package cause
 
 import (
-	"errors"
 	"fmt"
 	"maps"
 	"reflect"
@@ -13,156 +12,101 @@ type validatable interface {
 	Validate() error
 }
 
-type mapError map[string]any
+type MapError map[string]any
 
-func (me mapError) Error() string {
-	return fmt.Sprintf("invalid fields: %s", strings.Join(slices.Sorted(maps.Keys(me)), ", "))
+func (me MapError) Error() string {
+	return "invalid fields: " + me.String()
 }
 
-type Map map[string]any
-
-func (m Map) Required(name string, val any, other ...string) Map {
-	return m.Add(name, Required(val, other...))
+func (me MapError) String() string {
+	return strings.Join(slices.Sorted(maps.Keys(me)), ", ")
 }
 
-func (m Map) Optional(name string, val any, other ...string) Map {
+type MapValidator map[string]any
+
+func NewMapValidator() MapValidator {
+	return make(map[string]any)
+}
+
+func (m MapValidator) Optional(name string, val any, other ...string) MapValidator {
 	return m.Add(name, Optional(val, other...))
 }
 
-func (m Map) Add(name string, val validatable) Map {
-	if isZero(val) {
-		return m
-	}
-
-	if err := val.Validate(); err != nil {
-		switch e := err.(type) {
-		case sliceError:
-			// If the error is a slice error, we convert it to a map.
-			for i, item := range e {
-				if isZero(item) {
-					continue
-				}
-				itemName := fmt.Sprintf("%s[%d]", name, i)
-				m[itemName] = item
-			}
-		case mapError:
-			// If the error is a map error, we merge it into the current map.
-			m[name] = e
-		case error:
-			m[name] = e.Error()
-		default:
-			// If the error is not a string, we wrap it in a map.
-			m[name] = e
-		}
-	}
-	return m
+func (m MapValidator) Required(name string, val any, other ...string) MapValidator {
+	return m.Add(name, Required(val, other...))
 }
 
-func (m Map) AsError() error {
-	me := make(mapError)
-	for name, val := range m {
-		if isZero(val) {
-			continue
+func (v MapValidator) Add(key string, validator validatable) MapValidator {
+	if err := validator.Validate(); err != nil {
+		switch e := err.(type) {
+		case MapError:
+			v[key] = e
+		case SliceError:
+			for i, val := range e {
+				v[fmt.Sprintf("%s[%d]", key, i)] = val
+			}
+		case error:
+			v[key] = e.Error()
+		default:
+			v[key] = e
 		}
-		me[name] = val
 	}
-	if len(me) == 0 {
+
+	return v
+}
+
+func (v MapValidator) Validate() error {
+	if len(v) == 0 {
 		return nil
 	}
+
+	me := make(MapError)
+	maps.Copy(me, v)
+
 	return me
 }
 
-func Optional(value any, msgs ...string) validatable {
-	if isZero(value) {
-		return &errorStrings{}
-	}
+type SliceError map[int]any
 
-	switch v := value.(type) {
-	case validatable:
-		return v
-	default:
-		return &errorStrings{msgs}
-	}
+func (se SliceError) Error() string {
+	return "invalid slice"
 }
 
-func Required(value any, msgs ...string) validatable {
-	if isZero(value) {
-		return &errorStrings{[]string{"required"}}
-	}
-	switch v := value.(type) {
-	case validatable:
-		return v
-	default:
-		return &errorStrings{msgs}
-	}
-}
+type SliceValidator []validatable
 
-type errorStrings struct {
-	msgs []string
-}
-
-func (err *errorStrings) Validate() error {
-	msgs := filterZero(err.msgs)
-	if len(msgs) == 0 {
-		return nil
-	}
-
-	return errors.New(strings.Join(msgs, ", "))
-}
-
-type sliceError map[int]any
-
-func (se sliceError) Error() string {
-	return "SliceError"
-}
-
-func When(valid bool, msg string) string {
-	if valid {
-		return msg
-	}
-
-	return ""
-}
-
-type SliceError []validatable
-
-func SliceFunc[T any](vs []T, fn func(T) error) SliceError {
-	res := make([]validatable, len(vs))
-	for i, v := range vs {
-		res[i] = &value[T]{val: v, fn: fn}
-	}
-
-	return res
-
-}
-
-func Slice[T validatable](vs []T) SliceError {
+func Slice[T validatable](vs []T) SliceValidator {
 	res := make([]validatable, len(vs))
 	for i, v := range vs {
 		res[i] = v
 	}
 
-	return res
+	return SliceValidator(res)
 }
 
-func (s SliceError) Validate() error {
-	if len(s) == 0 {
-		return nil
+func SliceFunc[T any](vs []T, fn func(T) error) SliceValidator {
+	res := make([]validatable, len(vs))
+	for i, v := range vs {
+		res[i] = &ValueValidator[T]{
+			value:    v,
+			validate: fn,
+		}
 	}
 
-	se := make(sliceError)
+	return SliceValidator(res)
+}
+
+func (s SliceValidator) Validate() error {
+	se := make(SliceError)
 
 	for i, item := range s {
 		if err := item.Validate(); err != nil {
 			switch e := err.(type) {
-			case sliceError, mapError:
-				// If the error is a slice error, we convert it to a map.
+			case MapError, SliceError:
 				se[i] = e
 			case error:
 				se[i] = e.Error()
 			default:
-				// If the error is not a string, we wrap it in a map.
-				se[i] = e
+				se[i] = err
 			}
 		}
 	}
@@ -174,6 +118,59 @@ func (s SliceError) Validate() error {
 	return se
 }
 
+type ValueError string
+
+func (ve ValueError) Error() string {
+	return string(ve)
+}
+
+type ValueValidator[T any] struct {
+	value    T
+	validate func(T) error
+}
+
+func (v *ValueValidator[T]) Validate() error {
+	return v.validate(v.value)
+}
+
+func Required(val any, other ...string) validatable {
+	return &ValueValidator[any]{
+		value:    val,
+		validate: validateFunc(true, other...),
+	}
+}
+
+func Optional(val any, other ...string) validatable {
+	return &ValueValidator[any]{
+		value:    val,
+		validate: validateFunc(false, other...),
+	}
+}
+
+func validateFunc(required bool, other ...string) func(any) error {
+	return func(v any) error {
+		if isZero(v) {
+			if required {
+				return ValueError("required")
+			}
+
+			return nil
+		}
+
+		switch v := v.(type) {
+		case validatable:
+			return v.Validate()
+		default:
+			other = filterZero(other)
+			if len(other) == 0 {
+				return nil
+			}
+
+			return ValueError(strings.Join(other, ", "))
+		}
+	}
+}
+
 func filterZero[T comparable](s []T) []T {
 	var res []T
 	var zero T
@@ -182,16 +179,8 @@ func filterZero[T comparable](s []T) []T {
 			res = append(res, v)
 		}
 	}
+
 	return res
-}
-
-type value[T any] struct {
-	val T
-	fn  func(T) error
-}
-
-func (v *value[T]) Validate() error {
-	return v.fn(v.val)
 }
 
 func isZero(t any) bool {
@@ -205,4 +194,12 @@ func isZero(t any) bool {
 	}
 
 	return v.IsZero()
+}
+
+func When(valid bool, msg string) string {
+	if valid {
+		return msg
+	}
+
+	return ""
 }

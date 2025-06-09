@@ -16,12 +16,12 @@ type Author struct {
 }
 
 func (a *Author) Validate() error {
-	return cause.Map{}.
+	return cause.NewMapValidator().
 		Required("name", a.Name).
 		Required("books", cause.Slice(a.Books)).
 		// Required("books", cause.Slice(a.Books, (*Book).Validate)).
 		Optional("likes", cause.SliceFunc(a.Likes, validateLike)).
-		AsError()
+		Validate()
 }
 
 func validateLike(in string) error {
@@ -43,11 +43,11 @@ type Book struct {
 }
 
 func (b *Book) Validate() error {
-	return cause.Map{}.
+	return cause.NewMapValidator().
 		Required("title", b.Title).
 		Optional("year", b.Year, cause.When(b.Year < 2000, "too old")).
 		Optional("languages", len(b.Languages), cause.When(len(b.Languages) > 1, "does not support multilingual")).
-		AsError()
+		Validate()
 }
 
 func ExampleFields_author_valid() {

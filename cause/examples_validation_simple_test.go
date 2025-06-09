@@ -2,6 +2,7 @@ package cause_test
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/alextanhongpin/errors/cause"
@@ -13,10 +14,10 @@ type User struct {
 }
 
 func (u *User) Validate() error {
-	return cause.Map{}.
+	return cause.NewMapValidator().
 		Required("name", u.Name).
 		Optional("age", u.Age, cause.When(u.Age < 13, "under age limit")).
-		AsError()
+		Validate()
 }
 
 func ExampleFields_user_valid() {
@@ -27,6 +28,7 @@ func ExampleFields_user_valid() {
 	validateUser(u)
 
 	// Output:
+	// is map: false
 	// is nil: true
 	// err: <nil>
 	// null
@@ -40,6 +42,7 @@ func ExampleFields_user_invalid_name() {
 	validateUser(u)
 
 	// Output:
+	// is map: true
 	// is nil: false
 	// err: invalid fields: name
 	// {
@@ -55,6 +58,7 @@ func ExampleFields_user_invalid_age() {
 	validateUser(u)
 
 	// Output:
+	// is map: true
 	// is nil: false
 	// err: invalid fields: age
 	// {
@@ -70,6 +74,7 @@ func ExampleFields_user_invalid_age_and_name() {
 	validateUser(u)
 
 	// Output:
+	// is map: true
 	// is nil: false
 	// err: invalid fields: age, name
 	// {
@@ -79,7 +84,9 @@ func ExampleFields_user_invalid_age_and_name() {
 }
 
 func validateUser(u *User) {
-	err := u.Validate()
+	var err error = u.Validate()
+	var me cause.MapError
+	fmt.Println("is map:", errors.As(err, &me))
 	fmt.Println("is nil:", err == nil)
 	fmt.Println("err:", err)
 

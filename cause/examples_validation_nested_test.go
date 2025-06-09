@@ -14,12 +14,12 @@ type Node struct {
 }
 
 func (n *Node) Validate() error {
-	return cause.Map{}.
+	return cause.NewMapValidator().
 		Required("name", n.Name).
 		Optional("node", n.Node).
 		Optional("nodes", len(n.Nodes), cause.When(len(n.Nodes) > 3, "too many nodes")).
 		Optional("nodes", cause.Slice(n.Nodes)).
-		AsError()
+		Validate()
 }
 
 func ExampleFields_node_valid() {
