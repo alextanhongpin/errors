@@ -14,10 +14,10 @@ type User struct {
 }
 
 func (u *User) Validate() error {
-	return cause.NewMapValidator().
-		Required("name", u.Name).
-		Optional("age", u.Age, cause.When(u.Age < 13, "under age limit")).
-		Validate()
+	return cause.Map{
+		"age":  cause.Optional(u.Age).When(u.Age < 13, "under age limit"),
+		"name": cause.Required(u.Name),
+	}.Err()
 }
 
 func ExampleFields_user_valid() {
@@ -83,9 +83,13 @@ func ExampleFields_user_invalid_age_and_name() {
 	// }
 }
 
+type errorMap interface {
+	Map() map[string]any
+}
+
 func validateUser(u *User) {
 	var err error = u.Validate()
-	var me cause.MapError
+	var me errorMap
 	fmt.Println("is map:", errors.As(err, &me))
 	fmt.Println("is nil:", err == nil)
 	fmt.Println("err:", err)

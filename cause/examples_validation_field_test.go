@@ -24,9 +24,9 @@ type Account struct {
 }
 
 func (a *Account) Validate() error {
-	return cause.NewMapValidator().
-		Required("email", a.Email).
-		Validate()
+	return cause.Map{
+		"email": cause.Required(a.Email),
+	}.Err()
 }
 
 func ExampleFields_email_valid() {
@@ -72,7 +72,7 @@ func ExampleFields_email_empty() {
 
 func validateAccount(a *Account) {
 	var err error = a.Validate()
-	var me cause.MapError
+	var me errorMap
 	fmt.Println("is map:", errors.As(err, &me))
 	fmt.Println("is nil:", err == nil)
 	fmt.Println("err:", err)

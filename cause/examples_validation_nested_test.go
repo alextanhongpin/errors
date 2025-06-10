@@ -14,12 +14,11 @@ type Node struct {
 }
 
 func (n *Node) Validate() error {
-	return cause.NewMapValidator().
-		Required("name", n.Name).
-		Optional("node", n.Node).
-		Optional("nodes", len(n.Nodes), cause.When(len(n.Nodes) > 3, "too many nodes")).
-		Optional("nodes", cause.Slice(n.Nodes)).
-		Validate()
+	return cause.Map{
+		"name":  cause.Required(n.Name),
+		"node":  cause.Optional(n.Node),
+		"nodes": cause.Optional(n.Nodes).When(len(n.Nodes) > 3, "too many nodes"),
+	}.Err()
 }
 
 func ExampleFields_node_valid() {
@@ -89,16 +88,16 @@ func ExampleFields_node_invalid_nested_node() {
 
 func ExampleFields_nodes_invalid() {
 	n := &Node{
-		Nodes: []*Node{&Node{}, &Node{Name: "X"}, &Node{Name: "Y"}},
+		Nodes: []*Node{{}, {Name: "X"}, {Name: "Y"}},
 		Node: &Node{
-			Node: &Node{},
+			Node: &Node{Nodes: []*Node{{Name: "D"}, {Name: "E"}, {}}},
 			Name: "B",
 			Nodes: []*Node{
 				{Name: "C"},
 				{Name: "D"},
 				{Name: "E"},
 				{Name: "F"}, // This will trigger the "too many nodes" error.
-				{},
+				{},          // This will be ignored
 			},
 		},
 	}
@@ -111,12 +110,12 @@ func ExampleFields_nodes_invalid() {
 	//   "name": "required",
 	//   "node": {
 	//     "node": {
-	//       "name": "required"
+	//       "name": "required",
+	//       "nodes[2]": {
+	//         "name": "required"
+	//       }
 	//     },
-	//     "nodes": "too many nodes",
-	//     "nodes[4]": {
-	//       "name": "required"
-	//     }
+	//     "nodes": "too many nodes"
 	//   },
 	//   "nodes[0]": {
 	//     "name": "required"
