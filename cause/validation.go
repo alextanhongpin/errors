@@ -1,6 +1,7 @@
 package cause
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"maps"
@@ -56,17 +57,25 @@ func (m Map) Err() error {
 		switch t := v.(type) {
 		case validatable:
 			if err := t.Validate(); err != nil {
-				switch e := err.(type) {
-				case errorSliceIndex:
-					for i, ve := range e {
-						em[fmt.Sprintf("%s[%d]", k, i)] = ve
+				var errs = []error{err}
+				for len(errs) > 0 {
+					err = errs[0]
+					errs = errs[1:]
+
+					switch e := err.(type) {
+					case *errorMulti:
+						errs = append(errs, e.Errors()...)
+					case errorSliceIndex:
+						for i, ve := range e {
+							em[fmt.Sprintf("%s[%d]", k, i)] = ve
+						}
+					case errorMap:
+						em[k] = e
+					case error:
+						em[k] = e.Error()
+					default:
+						em[k] = e
 					}
-				case errorMap:
-					em[k] = e
-				case error:
-					em[k] = e.Error()
-				default:
-					em[k] = e
 				}
 			}
 		case error:
@@ -176,12 +185,17 @@ func (b *Builder) Validate() error {
 		return nil
 	}
 
+	em := new(errorMulti)
 	if msg := joinStrings(b.msgs...); msg != "" {
-		return errors.New(msg)
+		em.err1 = errors.New(msg)
 	}
 
 	if b.v != nil {
-		return b.v.Validate()
+		em.err2 = b.v.Validate()
+	}
+
+	if em.Unwrap() != nil {
+		return em
 	}
 
 	return nil
@@ -248,4 +262,29 @@ func (s sliceValidator) Validate() error {
 	}
 
 	return es
+}
+
+type errorMulti struct {
+	err1 error
+	err2 error
+}
+
+func (e *errorMulti) Error() string {
+	return errors.Join(e.err1, e.err2).Error()
+}
+
+func (e *errorMulti) Errors() []error {
+	var errs []error
+	if e.err1 != nil {
+		errs = append(errs, e.err1)
+	}
+	if e.err2 != nil {
+		errs = append(errs, e.err2)
+	}
+
+	return errs
+}
+
+func (e *errorMulti) Unwrap() error {
+	return cmp.Or(e.err1, e.err2)
 }

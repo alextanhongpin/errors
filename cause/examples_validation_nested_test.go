@@ -115,7 +115,10 @@ func ExampleFields_nodes_invalid() {
 	//         "name": "required"
 	//       }
 	//     },
-	//     "nodes": "too many nodes"
+	//     "nodes": "too many nodes",
+	//     "nodes[4]": {
+	//       "name": "required"
+	//     }
 	//   },
 	//   "nodes[0]": {
 	//     "name": "required"
