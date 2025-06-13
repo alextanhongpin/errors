@@ -9,8 +9,6 @@ import (
 	"strings"
 )
 
-var validatableType = reflect.TypeOf((*validatable)(nil)).Elem()
-
 type validatable interface {
 	Validate() error
 }
@@ -63,35 +61,31 @@ func (m Map) Err() error {
 	return em
 }
 
-func Optional(val any, msgs ...string) *Builder {
+func Optional(val any) *Builder {
 	if isZero(val) {
 		return nil
 	}
 
 	if v, ok := isSlice(val); ok {
 		return &Builder{
-			msgs: msgs,
-			v:    v,
+			v: v,
 		}
 	}
 
 	if v, ok := val.(validatable); ok {
 		return &Builder{
-			msgs: msgs,
-			v:    v,
+			v: v,
 		}
 	}
 
-	return &Builder{
-		msgs: msgs,
-	}
+	return &Builder{}
 }
 
-func Required(val any, msgs ...string) *Builder {
-	return RequiredMessage(val, "required", msgs...)
+func Required(val any) *Builder {
+	return RequiredMessage(val, "required")
 }
 
-func RequiredMessage(val any, msg string, msgs ...string) *Builder {
+func RequiredMessage(val any, msg string) *Builder {
 	if isZero(val) {
 		return &Builder{
 			msgs: []string{msg},
@@ -100,21 +94,17 @@ func RequiredMessage(val any, msg string, msgs ...string) *Builder {
 
 	if v, ok := isSlice(val); ok {
 		return &Builder{
-			msgs: msgs,
-			v:    v,
+			v: v,
 		}
 	}
 
 	if v, ok := val.(validatable); ok {
 		return &Builder{
-			msgs: msgs,
-			v:    v,
+			v: v,
 		}
 	}
 
-	return &Builder{
-		msgs: msgs,
-	}
+	return &Builder{}
 }
 
 func SliceFunc[T any](vs []T, fn func(T) error) sliceValidator {
