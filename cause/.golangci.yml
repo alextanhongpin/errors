@@ -1,0 +1,146 @@
+run:
+  timeout: 5m
+  issues-exit-code: 1
+  tests: true
+  skip-dirs:
+    - vendor
+  skip-files:
+    - ".*\\.pb\\.go$"
+
+output:
+  format: colored-line-number
+  print-issued-lines: true
+  print-linter-name: true
+
+linters-settings:
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+  
+  gocyclo:
+    min-complexity: 15
+  
+  gofmt:
+    simplify: true
+  
+  goimports:
+    local-prefixes: github.com/alextanhongpin/errors/cause
+  
+  govet:
+    check-shadowing: true
+    enable-all: true
+  
+  ineffassign:
+    check-exported: true
+  
+  misspell:
+    locale: US
+  
+  unparam:
+    check-exported: true
+  
+  unused:
+    check-exported: false
+  
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - experimental
+      - opinionated
+      - performance
+      - style
+    disabled-checks:
+      - wrapperFunc
+      - dupImport
+      - ifElseChain
+      - octalLiteral
+  
+  golint:
+    min-confidence: 0.8
+  
+  revive:
+    min-confidence: 0.8
+    rules:
+      - name: var-naming
+        severity: warning
+        disabled: false
+        arguments:
+          - ["ID"] # Allow ID instead of Id
+  
+  staticcheck:
+    go: "1.21"
+    checks: ["all"]
+
+linters:
+  enable:
+    - bodyclose
+    - deadcode
+    - depguard
+    - dogsled
+    - dupl
+    - errcheck
+    - exportloopref
+    - exhaustive
+    - gochecknoinits
+    - goconst
+    - gocritic
+    - gocyclo
+    - gofmt
+    - goimports
+    - golint
+    - goprintffuncname
+    - gosec
+    - gosimple
+    - govet
+    - ineffassign
+    - misspell
+    - nakedret
+    - noctx
+    - nolintlint
+    - revive
+    - staticcheck
+    - structcheck
+    - stylecheck
+    - typecheck
+    - unconvert
+    - unparam
+    - unused
+    - varcheck
+    - whitespace
+  
+  disable:
+    - funlen # We allow longer functions for complex logic
+    - lll    # We don't enforce line length strictly
+    - gochecknoglobals # We use package-level error definitions
+
+issues:
+  exclude-rules:
+    # Exclude some linters from running on tests files
+    - path: _test\.go
+      linters:
+        - gocyclo
+        - errcheck
+        - dupl
+        - gosec
+        - goconst
+    
+    # Exclude example files from some checks
+    - path: examples\.go
+      linters:
+        - unused
+        - deadcode
+    
+    # Exclude known false positives
+    - text: "Use of weak random number generator"
+      linters:
+        - gosec
+    
+    # Allow globals in test files
+    - path: _test\.go
+      text: "don't use global variables"
+      linters:
+        - gochecknoglobals
+
+  exclude-use-default: false
+  max-issues-per-linter: 0
+  max-same-issues: 0

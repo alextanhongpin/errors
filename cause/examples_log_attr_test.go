@@ -12,7 +12,8 @@ import (
 )
 
 func ExampleError_log_attr() {
-	var err error = cause.New(codes.BadRequest, "BadRequest", "%s is invalid", slog.String("email", "xyz@mail.com"))
+	var err error = cause.New(codes.BadRequest, "BadRequest", "email=%s is invalid", "xyz@mail.com").
+		WithAttrs(slog.String("email", "xyz@mail.com"))
 
 	replacer := func(groups []string, a slog.Attr) slog.Attr {
 		if a.Key == "time" {
@@ -39,7 +40,7 @@ func ExampleError_log_attr() {
 	//   "source": {
 	//     "function": "github.com/alextanhongpin/errors/cause_test.ExampleError_log_attr",
 	//     "file": "/Users/alextanhongpin/Documents/go/errors/cause/examples_log_attr_test.go",
-	//     "line": 26
+	//     "line": 27
 	//   },
 	//   "msg": "payment failed",
 	//   "error": {
