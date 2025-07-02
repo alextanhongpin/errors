@@ -258,6 +258,38 @@ See the `examples_*_test.go` files for comprehensive usage examples including:
 - Error chaining
 - Complex validation scenarios
 
+## Real-World Examples
+
+The package includes comprehensive real-world examples demonstrating validation in different domains:
+
+### Healthcare System (`examples_healthcare_test.go`)
+- Patient record management with medical validations
+- Healthcare-specific field validation (blood types, medical IDs, vital signs)
+- Complex nested structures with emergency contacts and insurance information
+
+### Educational Institution (`examples_education_test.go`)
+- Student enrollment system with academic profile validation
+- Course registration with prerequisites and scheduling
+- Transcript management and GPA calculations
+
+### IoT Device Management (`examples_iot_test.go`)
+- Device configuration validation with network settings
+- Sensor calibration and threshold management
+- Security configuration and API key management
+- Power management and location tracking
+
+### Business Applications (`examples_business_test.go`, `examples_api_test.go`)
+- Financial transaction validation
+- API request/response validation
+- E-commerce product and order management
+- User registration and authentication
+
+Each example demonstrates:
+- Complex nested validation scenarios
+- Domain-specific validation rules
+- Real-world field constraints and business logic
+- Best practices for structuring validation code
+
 ## Contributing
 
 Contributions are welcome! Please read our contributing guidelines and submit pull requests for any improvements.
