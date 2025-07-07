@@ -2,6 +2,8 @@ package cause_test
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 	"time"
 
@@ -172,7 +174,7 @@ type AttendeeInfo struct {
 	Phone       string    `json:"phone"`
 	Company     string    `json:"company,omitempty"`
 	JobTitle    string    `json:"job_title,omitempty"`
-	DateOfBirth time.Time `json:"date_of_birth,omitempty"`
+	DateOfBirth time.Time `json:"date_of_birth,omitzero"`
 }
 
 type PaymentInfo struct {
@@ -324,16 +326,25 @@ func ExampleTransferRequest_validation() {
 	if err := invalidTransfer.Validate(); err != nil {
 		if validationErr, ok := err.(interface{ Map() map[string]any }); ok {
 			fieldErrors := validationErr.Map()
-			for field, fieldErr := range fieldErrors {
+			fields := slices.Sorted(maps.Keys(fieldErrors))
+			for _, field := range fields {
+				fieldErr := fieldErrors[field]
 				fmt.Printf("  %s: %v\n", field, fieldErr)
 			}
 		}
 	}
 
-	// Note: Output field order may vary due to Go map iteration order
 	// Output:
 	// Valid transfer:
 	// Validation passed!
+	//
+	// Invalid transfer:
+	//   amount: amount must be positive
+	//   currency: currency not supported, invalid currency code
+	//   description: description too long
+	//   from_account_id: cannot transfer to same account, invalid from account ID format
+	//   reference: reference must be alphanumeric, reference too short
+	//   to_account_id: invalid to account ID format
 }
 
 func ExampleEventRegistration_validation() {
@@ -397,12 +408,7 @@ func hasValidDecimalPlaces(amount float64) bool {
 
 func isValidCurrencyCode(currency string) bool {
 	validCurrencies := []string{"USD", "EUR", "GBP", "JPY", "CAD", "AUD", "CHF"}
-	for _, valid := range validCurrencies {
-		if currency == valid {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(validCurrencies, currency)
 }
 
 func isSupportedCurrency(currency string) bool {
@@ -459,13 +465,7 @@ func isValidUserID(userID string) bool {
 func hasInvalidCategories(categories []string) bool {
 	validCategories := []string{"technology", "business", "lifestyle", "health", "education", "entertainment"}
 	for _, category := range categories {
-		valid := false
-		for _, validCat := range validCategories {
-			if category == validCat {
-				valid = true
-				break
-			}
-		}
+		valid := slices.Contains(validCategories, category)
 		if !valid {
 			return true
 		}
@@ -495,12 +495,7 @@ func hasInvalidTags(tags []string) bool {
 
 func isValidPostStatus(status string) bool {
 	validStatuses := []string{"draft", "published", "archived", "scheduled"}
-	for _, valid := range validStatuses {
-		if status == valid {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(validStatuses, status)
 }
 
 func isValidURL(url string) bool {
@@ -531,12 +526,7 @@ func isEventOpen(eventID string) bool {
 
 func isValidTicketType(eventID, ticketType string) bool {
 	validTypes := []string{"standard", "premium", "vip", "student"}
-	for _, valid := range validTypes {
-		if ticketType == valid {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(validTypes, ticketType)
 }
 
 func getMaxTicketsPerRegistration(eventID string) int {
@@ -552,13 +542,7 @@ func isTicketAvailable(eventID, ticketType string, quantity int) bool {
 func hasInvalidDietaryReqs(reqs []string) bool {
 	validReqs := []string{"vegetarian", "vegan", "gluten-free", "dairy-free", "nut-free", "halal", "kosher"}
 	for _, req := range reqs {
-		valid := false
-		for _, validReq := range validReqs {
-			if req == validReq {
-				valid = true
-				break
-			}
-		}
+		valid := slices.Contains(validReqs, req)
 		if !valid {
 			return true
 		}
@@ -569,13 +553,7 @@ func hasInvalidDietaryReqs(reqs []string) bool {
 func hasInvalidAccessibilityNeeds(needs []string) bool {
 	validNeeds := []string{"wheelchair", "hearing-impaired", "visually-impaired", "mobility-assistance"}
 	for _, need := range needs {
-		valid := false
-		for _, validNeed := range validNeeds {
-			if need == validNeed {
-				valid = true
-				break
-			}
-		}
+		valid := slices.Contains(validNeeds, need)
 		if !valid {
 			return true
 		}
@@ -590,12 +568,7 @@ func validateCustomFields(eventID string, fields map[string]any) bool {
 
 func isValidPaymentMethod(method string) bool {
 	validMethods := []string{"credit_card", "debit_card", "paypal", "bank_transfer"}
-	for _, valid := range validMethods {
-		if method == valid {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(validMethods, method)
 }
 
 func isValidPromoCode(code string) bool {
@@ -615,10 +588,5 @@ func isPromoCodeActive(code string) bool {
 
 func isValidRelationship(relationship string) bool {
 	validRelationships := []string{"spouse", "parent", "child", "sibling", "friend", "colleague", "other"}
-	for _, valid := range validRelationships {
-		if relationship == valid {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(validRelationships, relationship)
 }

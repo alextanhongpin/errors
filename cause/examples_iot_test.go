@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -78,7 +79,7 @@ type SecurityConfig struct {
 	APIKeys           []APIKey  `json:"api_keys,omitempty"`
 	FirewallEnabled   bool      `json:"firewall_enabled"`
 	VPNEnabled        bool      `json:"vpn_enabled"`
-	LastSecurityScan  time.Time `json:"last_security_scan,omitempty"`
+	LastSecurityScan  time.Time `json:"last_security_scan,omitzero"`
 }
 
 type APIKey struct {
@@ -119,8 +120,8 @@ type DeviceMetadata struct {
 	DeploymentType    string            `json:"deployment_type"`
 	MaintenanceWindow string            `json:"maintenance_window,omitempty"`
 	SupportContact    string            `json:"support_contact,omitempty"`
-	PurchaseDate      time.Time         `json:"purchase_date,omitempty"`
-	WarrantyExpiry    time.Time         `json:"warranty_expiry,omitempty"`
+	PurchaseDate      time.Time         `json:"purchase_date,omitzero"`
+	WarrantyExpiry    time.Time         `json:"warranty_expiry,omitzero"`
 	CustomFields      map[string]string `json:"custom_fields,omitempty"`
 }
 
@@ -473,12 +474,7 @@ func isValidVersion(version string) bool {
 
 func isValidDeviceStatus(status string) bool {
 	validStatuses := []string{"Online", "Offline", "Maintenance", "Error", "Initializing", "Updating"}
-	for _, valid := range validStatuses {
-		if status == valid {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(validStatuses, status)
 }
 
 func containsInvalidSSIDChars(ssid string) bool {
@@ -511,12 +507,7 @@ func isValidMACAddress(mac string) bool {
 
 func isValidNetworkMode(mode string) bool {
 	validModes := []string{"WiFi", "Ethernet", "Cellular", "LoRa", "Zigbee", "Bluetooth"}
-	for _, valid := range validModes {
-		if mode == valid {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(validModes, mode)
 }
 
 func isValidSensorID(id string) bool {
@@ -530,12 +521,7 @@ func isValidSensorType(sensorType string) bool {
 		"Sound", "Gas", "Proximity", "Accelerometer", "Gyroscope",
 		"GPS", "Current", "Voltage", "pH", "Flow",
 	}
-	for _, valid := range validTypes {
-		if sensorType == valid {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(validTypes, sensorType)
 }
 
 func isValidUnit(unit string) bool {
@@ -544,32 +530,17 @@ func isValidUnit(unit string) bool {
 		"m/s", "km/h", "mph", "lux", "dB", "ppm", "V", "A",
 		"W", "Hz", "rpm", "m", "cm", "mm", "kg", "g",
 	}
-	for _, valid := range validUnits {
-		if unit == valid {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(validUnits, unit)
 }
 
 func isValidEncryptionType(encType string) bool {
 	validTypes := []string{"AES256", "AES128", "TLS1.2", "TLS1.3", "WPA2", "WPA3"}
-	for _, valid := range validTypes {
-		if encType == valid {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(validTypes, encType)
 }
 
 func isValidAuthMethod(method string) bool {
 	validMethods := []string{"Certificate", "Key", "Username/Password", "OAuth2", "JWT", "HMAC"}
-	for _, valid := range validMethods {
-		if method == valid {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(validMethods, method)
 }
 
 func isValidAPIKeyID(id string) bool {
@@ -580,13 +551,7 @@ func isValidAPIKeyID(id string) bool {
 func areValidPermissions(permissions []string) bool {
 	validPerms := []string{"read", "write", "delete", "admin", "config", "monitor"}
 	for _, perm := range permissions {
-		found := false
-		for _, valid := range validPerms {
-			if perm == valid {
-				found = true
-				break
-			}
-		}
+		found := slices.Contains(validPerms, perm)
 		if !found {
 			return false
 		}
@@ -596,12 +561,7 @@ func areValidPermissions(permissions []string) bool {
 
 func isValidPowerSource(source string) bool {
 	validSources := []string{"AC", "Battery", "Solar", "PoE", "USB", "DC"}
-	for _, valid := range validSources {
-		if source == valid {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(validSources, source)
 }
 
 func isValidCronSchedule(schedule string) bool {
@@ -629,22 +589,12 @@ func areValidTags(tags []string) bool {
 
 func isValidEnvironment(env string) bool {
 	validEnvs := []string{"Production", "Staging", "Development", "Testing", "Lab"}
-	for _, valid := range validEnvs {
-		if env == valid {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(validEnvs, env)
 }
 
 func isValidDeploymentType(depType string) bool {
 	validTypes := []string{"Indoor", "Outdoor", "Industrial", "Marine", "Automotive", "Aerospace"}
-	for _, valid := range validTypes {
-		if depType == valid {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(validTypes, depType)
 }
 
 // Example test function
@@ -726,12 +676,7 @@ func ExampleIoTDeviceConfig_Validate() {
 
 func isValidDeviceType(deviceType string) bool {
 	validTypes := []string{"Sensor", "Actuator", "Controller", "Gateway", "Monitor", "Alarm", "Display"}
-	for _, valid := range validTypes {
-		if deviceType == valid {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(validTypes, deviceType)
 }
 
 func isValidEmail(email string) bool {

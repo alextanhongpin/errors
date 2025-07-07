@@ -3,6 +3,7 @@ package cause_test
 import (
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -16,7 +17,7 @@ type StudentEnrollment struct {
 	PersonalInfo   StudentProfile     `json:"personal_info"`
 	AcademicInfo   AcademicProfile    `json:"academic_info"`
 	Courses        []CourseEnrollment `json:"courses"`
-	Guardian       GuardianInfo       `json:"guardian,omitempty"`
+	Guardian       GuardianInfo       `json:"guardian,omitzero"`
 	FinancialAid   *FinancialAid      `json:"financial_aid,omitempty"`
 	Transcripts    []Transcript       `json:"transcripts"`
 	Status         string             `json:"status"`
@@ -463,12 +464,7 @@ func isValidStudentNumber(number string) bool {
 
 func isValidEnrollmentStatus(status string) bool {
 	validStatuses := []string{"Active", "Inactive", "Graduated", "Transferred", "Suspended", "Withdrawn"}
-	for _, valid := range validStatuses {
-		if status == valid {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(validStatuses, status)
 }
 
 func isEducationalEmail(email string) bool {
@@ -489,12 +485,7 @@ func isValidProgram(program string) bool {
 		"Law", "Arts", "Education", "Psychology", "Biology", "Chemistry",
 		"Physics", "Mathematics", "History", "Literature", "Economics",
 	}
-	for _, valid := range validPrograms {
-		if program == valid {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(validPrograms, program)
 }
 
 func isValidMajor(major string) bool {
@@ -504,22 +495,12 @@ func isValidMajor(major string) bool {
 
 func isValidSemester(semester string) bool {
 	validSemesters := []string{"Fall", "Spring", "Summer", "Winter"}
-	for _, valid := range validSemesters {
-		if semester == valid {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(validSemesters, semester)
 }
 
 func isValidDegreeType(degreeType string) bool {
 	validTypes := []string{"Bachelor", "Master", "PhD", "Associate", "Certificate", "Diploma"}
-	for _, valid := range validTypes {
-		if degreeType == valid {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(validTypes, degreeType)
 }
 
 func isValidFacultyID(id string) bool {
@@ -534,34 +515,18 @@ func isValidCourseID(id string) bool {
 
 func isValidGrade(grade string) bool {
 	validGrades := []string{"A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D+", "D", "F", "I", "W", "P", "NP"}
-	for _, valid := range validGrades {
-		if grade == valid {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(validGrades, grade)
 }
 
 func isValidCourseStatus(status string) bool {
 	validStatuses := []string{"Enrolled", "Completed", "Dropped", "Withdrawn", "In Progress"}
-	for _, valid := range validStatuses {
-		if status == valid {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(validStatuses, status)
 }
 
 func areValidDays(days []string) bool {
 	validDays := []string{"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"}
 	for _, day := range days {
-		found := false
-		for _, valid := range validDays {
-			if day == valid {
-				found = true
-				break
-			}
-		}
+		found := slices.Contains(validDays, day)
 		if !found {
 			return false
 		}
@@ -595,12 +560,7 @@ func isValidGuardianRelationship(relationship string) bool {
 		"Parent", "Father", "Mother", "Guardian", "Grandparent",
 		"Uncle", "Aunt", "Sibling", "Spouse", "Other",
 	}
-	for _, valid := range validRelationships {
-		if relationship == valid {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(validRelationships, relationship)
 }
 
 func isValidFinancialAidType(aidType string) bool {
@@ -608,22 +568,12 @@ func isValidFinancialAidType(aidType string) bool {
 		"Scholarship", "Grant", "Loan", "Work-Study", "Fellowship",
 		"Assistantship", "Need-Based Aid", "Merit-Based Aid",
 	}
-	for _, valid := range validTypes {
-		if aidType == valid {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(validTypes, aidType)
 }
 
 func isValidFinancialAidStatus(status string) bool {
 	validStatuses := []string{"Applied", "Approved", "Denied", "Pending", "Disbursed", "Cancelled"}
-	for _, valid := range validStatuses {
-		if status == valid {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(validStatuses, status)
 }
 
 func isValidAcademicYear(year string) bool {

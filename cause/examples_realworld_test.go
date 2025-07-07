@@ -2,7 +2,9 @@ package cause_test
 
 import (
 	"fmt"
+	"maps"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -368,16 +370,27 @@ func ExampleUserRegistration_validation() {
 	if err := invalidUser.Validate(); err != nil {
 		if validationErr, ok := err.(interface{ Map() map[string]any }); ok {
 			fieldErrors := validationErr.Map()
-			for field, fieldErr := range fieldErrors {
+			fields := slices.Sorted(maps.Keys(fieldErrors))
+			for _, field := range fields {
+				fieldErr := fieldErrors[field]
 				fmt.Printf("  %s: %v\n", field, fieldErr)
 			}
 		}
 	}
 
-	// Note: Output field order may vary due to Go map iteration order
 	// Output:
 	// Valid user registration:
 	// Validation passed!
+	//
+	// Invalid user registration:
+	//   confirm_password: passwords do not match
+	//   date_of_birth: date of birth cannot be in the future, must be at least 13 years old
+	//   email: invalid email format
+	//   first_name: first name too short
+	//   last_name: last name cannot contain numbers
+	//   password: password must be at least 8 characters, password must contain digit, password must contain special character, password must contain uppercase letter
+	//   phone_number: invalid phone number format
+	//   terms: required, must accept terms and conditions
 }
 
 func ExampleProduct_validation() {

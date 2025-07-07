@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JSON Validation Error Visualizer</title>
+  <style>
+    body {
+      font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+      margin: 0;
+      background: #f6f8fa;
+      min-height: 100vh;
+    }
+    h1 {
+      font-size: 2.1rem;
+      font-weight: 700;
+      color: #2d3a4a;
+      margin: 2rem 0 1.5rem 0;
+      text-align: center;
+    }
+    .container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 2rem;
+      max-width: 1100px;
+      margin: 0 auto 2rem auto;
+      align-items: flex-start;
+    }
+    .panel {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 12px #0001;
+      padding: 1.5rem 1.2rem 1.2rem 1.2rem;
+      flex: 1 1 320px;
+      min-width: 300px;
+      max-width: 100%;
+    }
+    textarea {
+      width: 100%;
+      font-family: 'JetBrains Mono', 'Fira Mono', 'Menlo', monospace;
+      font-size: 1rem;
+      border: 1px solid #e0e7ef;
+      border-radius: 6px;
+      padding: 0.7em 1em;
+      margin-bottom: 1em;
+      background: #f8fafc;
+      resize: vertical;
+      transition: border 0.2s;
+    }
+    textarea:focus {
+      border: 1.5px solid #3949ab;
+      outline: none;
+      background: #fff;
+    }
+    button {
+      background: #3949ab;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 0.7em 1.5em;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 2px 8px #3949ab22;
+      transition: background 0.2s, box-shadow 0.2s;
+      margin-bottom: 1em;
+    }
+    button:hover {
+      background: #1a237e;
+      box-shadow: 0 4px 16px #1a237e22;
+    }
+    #jsonWithErrors, #errorOutput {
+      font-family: 'JetBrains Mono', 'Fira Mono', 'Menlo', monospace;
+      background: #f8fafc;
+      padding: 1.1rem;
+      border-radius: 7px;
+      overflow-x: auto;
+      white-space: pre;
+      font-size: 1.04rem;
+      min-height: 220px;
+      border: 1px solid #e0e7ef;
+    }
+    .json-key { color: #3949ab; font-weight: 600; }
+    .json-string { color: #388e3c; }
+    .json-number { color: #d84315; }
+    .json-null { color: #616161; font-style: italic; }
+    .json-error-hover {
+      position: relative;
+      cursor: pointer;
+      color: #b00020;
+      text-decoration: underline dotted 1.5px;
+      font-weight: 600;
+      background: #fff6f6;
+      border-radius: 3px;
+      padding: 0 2px;
+      transition: background 0.2s;
+    }
+    .json-error-hover:hover {
+      background: #ffeaea;
+    }
+    .json-error-tooltip {
+      display: none;
+      position: absolute;
+      left: 100%;
+      top: 0;
+      margin-left: 10px;
+      background: #fff;
+      color: #b00020;
+      border: 1.2px solid #b00020;
+      border-radius: 5px;
+      padding: 0.5em 0.9em;
+      font-size: 1em;
+      z-index: 1000;
+      white-space: pre-line;
+      box-shadow: 0 2px 8px #b0002022;
+      pointer-events: none;
+      min-width: 120px;
+      max-width: 260px;
+    }
+    .json-error-hover:hover .json-error-tooltip {
+      display: block;
+      visibility: visible;
+    }
+    .json-error-field {
+      background: #fff3e0;
+      border-radius: 4px;
+      position: relative;
+    }
+    .json-error-icon {
+      color: #b00020;
+      font-weight: bold;
+      margin-left: 0.2em;
+      cursor: pointer;
+      font-size: 1em;
+      vertical-align: middle;
+    }
+  </style>
+</head>
+<body>
+  <h1>JSON Validation Error Visualizer</h1>
+  <div class="container">
+    <div class="panel">
+      <h2>Paste JSON</h2>
+      <textarea id="jsonInput" rows="10"></textarea>
+      <h2>Paste Validation Errors</h2>
+      <textarea id="errorInput" rows="10"></textarea>
+      <button id="updateBtn">Update View</button>
+      <button id="formatBtn" style="margin-left:0.5em; background:#e0e7ef; color:#3949ab;">Format JSON</button>
+    </div>
+    <div class="panel">
+      <h2>JSON with Validation Errors</h2>
+      <div id="jsonWithErrors" style="font-family:monospace; background:#f4f4f4; padding:1rem; border-radius:6px; overflow-x:auto; white-space:pre;"></div>
+    </div>
+    <div class="panel">
+      <h2>Validation Errors (Raw)</h2>
+      <pre id="errorOutput"></pre>
+    </div>
+  </div>
+  <script>
+    // Example JSON and error output from your Go validation
+    const nodeJson = {
+      "name": "",
+      "node": {
+        "name": "B",
+        "node": {
+          "name": "",
+          "node": null,
+          "nodes": [
+            { "name": "D", "node": null, "nodes": null },
+            { "name": "E", "node": null, "nodes": null },
+            { "name": "", "node": null, "nodes": null }
+          ]
+        },
+        "nodes": [
+          { "name": "C", "node": null, "nodes": null },
+          { "name": "D", "node": null, "nodes": null },
+          { "name": "E", "node": null, "nodes": null },
+          { "name": "F", "node": null, "nodes": null },
+          { "name": "", "node": null, "nodes": null }
+        ]
+      },
+      "nodes": [
+        { "name": "", "node": null, "nodes": null },
+        { "name": "X", "node": null, "nodes": null },
+        { "name": "Y", "node": null, "nodes": null }
+      ]
+    };
+
+    const validationErrors = {
+      "name": "required",
+      "node": {
+        "node": {
+          "name": "required",
+          "nodes[2]": { "name": "required" }
+        },
+        "nodes": "too many nodes",
+        "nodes[4]": { "name": "required" }
+      },
+      "nodes[0]": { "name": "required" }
+    };
+
+    // Merge errors into JSON for display
+    function mergeErrorsIntoJson(obj, errors) {
+      if (!errors || typeof errors !== 'object') return obj;
+      // Deep clone to avoid mutating original
+      let result;
+      if (Array.isArray(obj)) {
+        result = obj.map((x, i) => mergeErrorsIntoJson(x, undefined));
+      } else {
+        result = { ...obj };
+      }
+      for (const key in errors) {
+        if (!Object.prototype.hasOwnProperty.call(errors, key)) continue;
+        const arrMatch = key.match(/^([\w$]+)\[(\d+)\]$/);
+        if (arrMatch) {
+          // Array index error, e.g. nodes[0]
+          const arrKey = arrMatch[1];
+          const idx = parseInt(arrMatch[2], 10);
+          if (result[arrKey] && Array.isArray(result[arrKey]) && result[arrKey][idx] !== undefined) {
+            result[arrKey][idx] = mergeErrorsIntoJson(result[arrKey][idx], errors[key]);
+          }
+        } else if (Array.isArray(result[key]) && typeof errors[key] === 'string') {
+          // Attach error to the array itself
+          result[key] = result[key].slice(); // clone array
+          result[key]._validationError = errors[key];
+        } else if (Array.isArray(result) && /^\d+$/.test(key)) {
+          // Direct array index (for root arrays)
+          const idx = parseInt(key, 10);
+          if (result[idx] !== undefined) {
+            result[idx] = mergeErrorsIntoJson(result[idx], errors[key]);
+          }
+        } else if (typeof errors[key] === 'object' && errors[key] !== null) {
+          result[key] = mergeErrorsIntoJson(result[key], errors[key]);
+        } else {
+          // Attach error as a property (highlighted)
+          if (typeof result[key] === 'object' && result[key] !== null) {
+            result[key]._validationError = errors[key];
+          } else {
+            // Attach error to a special property for primitives
+            result["_validationError__" + key] = errors[key];
+          }
+        }
+      }
+      return result;
+    }
+
+    // Render JSON as HTML with error highlights, icons, and tooltips
+    function renderJsonHtml(obj, key = null, indent = 0) {
+      const pad = n => '&nbsp;'.repeat(n * 2);
+      if (obj === null) {
+        return '<span class="json-null">null</span>';
+      }
+      if (typeof obj !== 'object') {
+        if (typeof obj === 'string') {
+          return '<span class="json-string">"' + obj.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '"</span>';
+        }
+        if (typeof obj === 'number') {
+          return '<span class="json-number">' + obj + '</span>';
+        }
+        if (typeof obj === 'boolean') {
+          return '<span class="json-number">' + obj + '</span>';
+        }
+        return String(obj);
+      }
+      // Handle error for primitives (e.g. _validationError__key)
+      if (key && obj && obj.hasOwnProperty('_validationError')) {
+        return `<div class="json-error-field"><span class="json-error-icon" tabindex="0" title="${obj._validationError}">⚠️</span><span class="json-error-tooltip">${obj._validationError}</span>` + renderJsonHtml(obj[key], key, indent) + '</div>';
+      }
+      // Arrays
+      if (Array.isArray(obj)) {
+        let arrayError = obj._validationError ? `<div class="json-error-field"><span class="json-error-icon" tabindex="0" title="${obj._validationError}">⚠️</span><span class="json-error-tooltip">${obj._validationError}</span></div>` : '';
+        let arr = obj.map((item, idx) => {
+          let itemHtml = renderJsonHtml(item, null, indent + 1);
+          if (item && typeof item === 'object' && item._validationError) {
+            itemHtml = `<div class="json-error-field"><span class="json-error-icon" tabindex="0" title="${item._validationError}">⚠️</span><span class="json-error-tooltip">${item._validationError}</span>` + renderJsonHtml(item, null, indent + 1) + '</div>';
+          }
+          return pad(indent + 1) + `<span style='color:#888;'>[${idx}]</span> ` + itemHtml;
+        });
+        return arrayError + '[<br>' + arr.map((line, i) => line + (i < arr.length - 1 ? ',' : '')).join('<br>') + '<br>' + pad(indent) + ']';
+      }
+      // Objects
+      let html = '{<br>';
+      let keys = Object.keys(obj).filter(k => !k.startsWith('_validationError'));
+      let first = true;
+      for (const k of keys) {
+        if (k.startsWith('_validationError__')) {
+          // Error for primitive field
+          html += pad(indent + 1) + `<div class="json-error-field"><span class="json-error-icon" tabindex="0" title="${obj[k]}">⚠️</span><span class="json-error-tooltip">${obj[k]}</span></div><br>`;
+          continue;
+        }
+        if (!first) html += '<br>';
+        first = false;
+        html += pad(indent + 1) + `<span class="json-key">"${k}"</span>: `;
+        // If this field has an error (object with _validationError)
+        if (obj[k] && typeof obj[k] === 'object' && obj[k]._validationError) {
+          html += `<div class="json-error-field"><span class="json-error-icon" tabindex="0" title="${obj[k]._validationError}">⚠️</span><span class="json-error-tooltip">${obj[k]._validationError}</span>`;
+          html += renderJsonHtml(obj[k], k, indent + 1) + '</div>';
+        } else {
+          html += renderJsonHtml(obj[k], k, indent + 1);
+        }
+        if (k !== keys[keys.length - 1]) html += ',';
+      }
+      html += '<br>' + pad(indent) + '}';
+      return html;
+    }
+
+    // Pretty print JSON with syntax highlighting for values
+    function syntaxHighlightValue(value) {
+      if (typeof value === 'string') {
+        return '<span class="json-string">"' + value.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '"</span>';
+      } else if (typeof value === 'number') {
+        return '<span class="json-number">' + value + '</span>';
+      } else if (value === null) {
+        return '<span class="json-null">null</span>';
+      } else if (typeof value === 'boolean') {
+        return '<span class="json-number">' + value + '</span>';
+      }
+      return value;
+    }
+
+    // Pretty print JSON with syntax highlighting
+    function syntaxHighlight(json) {
+      if (typeof json != 'string') {
+        json = JSON.stringify(json, null, 2);
+      }
+      json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+        let cls = 'json-number';
+        if (/^".*"$/.test(match)) {
+          if (/:$/.test(match)) {
+            cls = 'json-key';
+          } else {
+            cls = 'json-string';
+          }
+        } else if (/true|false/.test(match)) {
+          cls = 'json-number';
+        } else if (/null/.test(match)) {
+          cls = 'json-null';
+        }
+        return '<span class="' + cls + '">' + match + '</span>';
+      });
+    }
+
+    // Utility: collect error paths from validation errors
+    function collectErrorPaths(errors, prefix = "") {
+      let paths = {};
+      for (const key in errors) {
+        if (!Object.prototype.hasOwnProperty.call(errors, key)) continue;
+        const value = errors[key];
+        let path = prefix ? (key.match(/^\d+$/) ? `${prefix}[${key}]` : `${prefix}.${key}`) : key;
+        if (typeof value === 'string') {
+          paths[path] = value;
+        } else if (typeof value === 'object' && value !== null) {
+          Object.assign(paths, collectErrorPaths(value, path));
+        }
+      }
+      return paths;
+    }
+
+    // Render JSON as HTML with hoverable error tooltips (CSS-only, no JS positioning)
+    function renderJsonWithHover(obj, errorPaths, path = "", indent = 0) {
+      const pad = n => '&nbsp;'.repeat(n * 2);
+      if (obj === null) return '<span class="json-null">null</span>';
+      if (typeof obj !== 'object') {
+        let html = '';
+        if (typeof obj === 'string') html = '<span class="json-string">"' + obj.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '"</span>';
+        else if (typeof obj === 'number') html = '<span class="json-number">' + obj + '</span>';
+        else if (typeof obj === 'boolean') html = '<span class="json-number">' + obj + '</span>';
+        else html = String(obj);
+        if (errorPaths[path]) {
+          return `<span class="json-error-hover">${html}<span class="json-error-tooltip">${errorPaths[path]}</span></span>`;
+        }
+        return html;
+      }
+      if (Array.isArray(obj)) {
+        let arr = obj.map((item, idx) => {
+          let itemPath = path ? `${path}[${idx}]` : `[${idx}]`;
+          return pad(indent + 1) + renderJsonWithHover(item, errorPaths, itemPath, indent + 1);
+        });
+        return '[<br>' + arr.map((line, i) => line + (i < arr.length - 1 ? ',' : '')).join('<br>') + '<br>' + pad(indent) + ']';
+      }
+      let html = '{<br>';
+      let keys = Object.keys(obj);
+      let first = true;
+      for (const k of keys) {
+        if (!first) html += '<br>';
+        first = false;
+        let fieldPath = path ? `${path}.${k}` : k;
+        html += pad(indent + 1) + `<span class="json-key">"${k}"</span>: `;
+        let valueHtml = renderJsonWithHover(obj[k], errorPaths, fieldPath, indent + 1);
+        if (errorPaths[fieldPath]) {
+          valueHtml = `<span class="json-error-hover">${valueHtml}<span class="json-error-tooltip">${errorPaths[fieldPath]}</span></span>`;
+        }
+        html += valueHtml;
+        if (k !== keys[keys.length - 1]) html += ',';
+      }
+      html += '<br>' + pad(indent) + '}';
+      return html;
+    }
+
+    // Update view from textarea
+    function updateView() {
+      let json, errors;
+      try {
+        json = JSON.parse(document.getElementById('jsonInput').value);
+      } catch (e) {
+        document.getElementById('jsonWithErrors').innerHTML = '<span style="color:red">Invalid JSON</span>';
+        return;
+      }
+      try {
+        errors = JSON.parse(document.getElementById('errorInput').value);
+      } catch (e) {
+        document.getElementById('jsonWithErrors').innerHTML = '<span style="color:red">Invalid Validation Errors</span>';
+        return;
+      }
+      const errorPaths = collectErrorPaths(errors);
+      document.getElementById('jsonWithErrors').innerHTML = renderJsonWithHover(json, errorPaths);
+      document.getElementById('errorOutput').innerHTML = syntaxHighlight(errors);
+    }
+
+    // Format JSON in textarea
+    document.getElementById('formatBtn').onclick = function() {
+      try {
+        const json = JSON.parse(document.getElementById('jsonInput').value);
+        document.getElementById('jsonInput').value = JSON.stringify(json, null, 2);
+      } catch (e) {
+        document.getElementById('jsonInput').value = 'Invalid JSON';
+      }
+      try {
+        const errors = JSON.parse(document.getElementById('errorInput').value);
+        document.getElementById('errorInput').value = JSON.stringify(errors, null, 2);
+      } catch (e) {
+        document.getElementById('errorInput').value = 'Invalid Validation Errors';
+      }
+    };
+
+    // Initial load with example data
+    document.getElementById('jsonInput').value = JSON.stringify(nodeJson, null, 2);
+    document.getElementById('errorInput').value = JSON.stringify(validationErrors, null, 2);
+    document.getElementById('updateBtn').onclick = updateView;
+    updateView();
+  </script>
+</body>
+</html>

@@ -2,7 +2,9 @@ package cause_test
 
 import (
 	"fmt"
+	"maps"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -25,7 +27,7 @@ type UserProfile struct {
 	DisplayName string    `json:"display_name,omitempty"`
 	Bio         string    `json:"bio,omitempty"`
 	Avatar      string    `json:"avatar,omitempty"`
-	DateOfBirth time.Time `json:"date_of_birth,omitempty"`
+	DateOfBirth time.Time `json:"date_of_birth,omitzero"`
 	Location    string    `json:"location,omitempty"`
 	Website     string    `json:"website,omitempty"`
 }
@@ -178,11 +180,11 @@ func (ps *PrivacySettings) Validate() error {
 // Real-world example: Search API Request
 type SearchRequest struct {
 	Query      string            `json:"query"`
-	Filters    SearchFilters     `json:"filters,omitempty"`
-	Sort       SortOptions       `json:"sort,omitempty"`
-	Pagination PaginationOptions `json:"pagination,omitempty"`
+	Filters    SearchFilters     `json:"filters,omitzero"`
+	Sort       SortOptions       `json:"sort,omitzero"`
+	Pagination PaginationOptions `json:"pagination,omitzero"`
 	Facets     []string          `json:"facets,omitempty"`
-	Highlight  HighlightOptions  `json:"highlight,omitempty"`
+	Highlight  HighlightOptions  `json:"highlight,omitzero"`
 	DebugMode  bool              `json:"debug_mode,omitempty"`
 }
 
@@ -484,16 +486,22 @@ func ExampleCreateUserAPIRequest_validation() {
 	if err := invalidRequest.Validate(); err != nil {
 		if validationErr, ok := err.(interface{ Map() map[string]any }); ok {
 			fieldErrors := validationErr.Map()
-			for field, fieldErr := range fieldErrors {
+			fields := slices.Sorted(maps.Keys(fieldErrors))
+			for _, field := range fields {
+				fieldErr := fieldErrors[field]
 				fmt.Printf("  %s: %v\n", field, fieldErr)
 			}
 		}
 	}
 
-	// Note: Output field order may vary due to Go map iteration order
 	// Output:
 	// Valid user creation request:
 	// Validation passed!
+	//
+	// Invalid user creation request:
+	//   email: invalid email format
+	//   password: password does not meet complexity requirements, password must be at least 8 characters
+	//   username: username must be at least 3 characters
 }
 
 func ExampleSearchRequest_validation() {
@@ -553,12 +561,7 @@ func isValidUsername(username string) bool {
 func isReservedUsername(username string) bool {
 	reserved := []string{"admin", "root", "api", "www", "support", "help", "about", "contact"}
 	usernameLower := strings.ToLower(username)
-	for _, res := range reserved {
-		if usernameLower == res {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(reserved, usernameLower)
 }
 
 func isDomainBlacklisted(email string) bool {
@@ -569,12 +572,7 @@ func isDomainBlacklisted(email string) bool {
 
 	blacklistedDomains := []string{"malicious.com", "spam.com", "phishing.net"}
 	domain := strings.ToLower(parts[1])
-	for _, blacklisted := range blacklistedDomains {
-		if domain == blacklisted {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(blacklistedDomains, domain)
 }
 
 func hasRequiredPasswordComplexity(password string) bool {
@@ -589,22 +587,15 @@ func hasRequiredPasswordComplexity(password string) bool {
 func isCommonPassword(password string) bool {
 	commonPasswords := []string{"password", "123456", "password123", "admin", "qwerty"}
 	passwordLower := strings.ToLower(password)
-	for _, common := range commonPasswords {
-		if passwordLower == common {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(commonPasswords, passwordLower)
 }
 
 func hasInvalidMetadataKeys(metadata map[string]string) bool {
 	invalidKeys := []string{"password", "secret", "private", "internal"}
 	for key := range metadata {
 		keyLower := strings.ToLower(key)
-		for _, invalid := range invalidKeys {
-			if keyLower == invalid {
-				return true
-			}
+		if slices.Contains(invalidKeys, keyLower) {
+			return true
 		}
 	}
 	return false
@@ -672,32 +663,17 @@ func isMaliciousURL(url string) bool {
 
 func isValidTheme(theme string) bool {
 	validThemes := []string{"light", "dark", "auto"}
-	for _, valid := range validThemes {
-		if theme == valid {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(validThemes, theme)
 }
 
 func isValidLanguageCode(lang string) bool {
 	validLanguages := []string{"en", "es", "fr", "de", "it", "ja", "ko", "zh"}
-	for _, valid := range validLanguages {
-		if lang == valid {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(validLanguages, lang)
 }
 
 func isValidTimezone(tz string) bool {
 	validTimezones := []string{"UTC", "America/New_York", "Europe/London", "Asia/Tokyo", "Australia/Sydney"}
-	for _, valid := range validTimezones {
-		if tz == valid {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(validTimezones, tz)
 }
 
 func containsMaliciousPatterns(query string) bool {
@@ -718,13 +694,7 @@ func isOnlyWhitespace(text string) bool {
 func hasInvalidFacets(facets []string) bool {
 	validFacets := []string{"brand", "category", "price_range", "rating", "availability", "location"}
 	for _, facet := range facets {
-		valid := false
-		for _, validFacet := range validFacets {
-			if facet == validFacet {
-				valid = true
-				break
-			}
-		}
+		valid := slices.Contains(validFacets, facet)
 		if !valid {
 			return true
 		}
@@ -735,13 +705,7 @@ func hasInvalidFacets(facets []string) bool {
 func hasInvalidCustomFilterKeys(filters map[string]string) bool {
 	validKeys := []string{"color", "size", "material", "condition", "shipping"}
 	for key := range filters {
-		valid := false
-		for _, validKey := range validKeys {
-			if key == validKey {
-				valid = true
-				break
-			}
-		}
+		valid := slices.Contains(validKeys, key)
 		if !valid {
 			return true
 		}
@@ -751,44 +715,23 @@ func hasInvalidCustomFilterKeys(filters map[string]string) bool {
 
 func isValidDistanceUnit(unit string) bool {
 	validUnits := []string{"km", "mi", "m", "ft"}
-	for _, valid := range validUnits {
-		if unit == valid {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(validUnits, unit)
 }
 
 func isValidSortField(field string) bool {
 	validFields := []string{"relevance", "price", "date", "rating", "popularity", "name"}
-	for _, valid := range validFields {
-		if field == valid {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(validFields, field)
 }
 
 func isValidSortDirection(direction string) bool {
 	validDirections := []string{"asc", "desc"}
-	for _, valid := range validDirections {
-		if direction == valid {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(validDirections, direction)
 }
 
 func hasInvalidHighlightFields(fields []string) bool {
 	validFields := []string{"title", "description", "content", "tags", "category"}
 	for _, field := range fields {
-		valid := false
-		for _, validField := range validFields {
-			if field == validField {
-				valid = true
-				break
-			}
-		}
+		valid := slices.Contains(validFields, field)
 		if !valid {
 			return true
 		}

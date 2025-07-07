@@ -3,6 +3,7 @@ package cause_test
 import (
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -19,7 +20,7 @@ type PatientRecord struct {
 	Medications      []Medication            `json:"current_medications"`
 	EmergencyContact MedicalEmergencyContact `json:"emergency_contact"`
 	Insurance        InsuranceInfo           `json:"insurance"`
-	Vitals           VitalSigns              `json:"vitals,omitempty"`
+	Vitals           VitalSigns              `json:"vitals,omitzero"`
 }
 
 type PersonalInfo struct {
@@ -427,22 +428,12 @@ func isValidMedicalNumber(number string) bool {
 
 func isValidGender(gender string) bool {
 	validGenders := []string{"M", "F", "O", "U"} // Male, Female, Other, Unknown
-	for _, valid := range validGenders {
-		if gender == valid {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(validGenders, gender)
 }
 
 func isValidBloodType(bloodType string) bool {
 	validTypes := []string{"A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"}
-	for _, valid := range validTypes {
-		if bloodType == valid {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(validTypes, bloodType)
 }
 
 func isValidDoctorID(id string) bool {
@@ -452,22 +443,12 @@ func isValidDoctorID(id string) bool {
 
 func isValidSeverity(severity string) bool {
 	validSeverities := []string{"Low", "Moderate", "High", "Critical"}
-	for _, valid := range validSeverities {
-		if severity == valid {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(validSeverities, severity)
 }
 
 func isValidAllergySeverity(severity string) bool {
 	validSeverities := []string{"Mild", "Moderate", "Severe", "Life-threatening"}
-	for _, valid := range validSeverities {
-		if severity == valid {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(validSeverities, severity)
 }
 
 func isValidDosage(dosage string) bool {
@@ -482,12 +463,7 @@ func isValidMedicationFrequency(frequency string) bool {
 		"Every 4 hours", "Every 6 hours", "Every 8 hours", "Every 12 hours",
 		"As needed", "Before meals", "After meals", "At bedtime",
 	}
-	for _, valid := range validFrequencies {
-		if frequency == valid {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(validFrequencies, frequency)
 }
 
 func isValidMedicalRelationship(relationship string) bool {
@@ -495,12 +471,7 @@ func isValidMedicalRelationship(relationship string) bool {
 		"Spouse", "Parent", "Child", "Sibling", "Grandparent", "Grandchild",
 		"Friend", "Partner", "Guardian", "Other",
 	}
-	for _, valid := range validRelationships {
-		if relationship == valid {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(validRelationships, relationship)
 }
 
 func isValidPolicyNumber(policyNumber string) bool {
