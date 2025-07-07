@@ -76,6 +76,10 @@ func (m Map) Err() error {
 	return em
 }
 
+func (m Map) Map() map[string]error {
+	return maps.Clone(m)
+}
+
 // Optional creates a validation builder for optional fields.
 // If the value is zero (nil, empty string, 0, empty slice, etc.),
 // no validation is performed. Otherwise, the value is validated
