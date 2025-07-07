@@ -4,6 +4,7 @@ package cause
 
 import (
 	"log/slog"
+	"slices"
 
 	"github.com/alextanhongpin/errors/codes"
 )
@@ -45,22 +46,22 @@ type Address struct {
 // Validate implements validation for User
 func (u *User) Validate() error {
 	return Map{
-		"id":      Required(u.ID),
-		"email":   Required(u.Email).When(!isValidEmail(u.Email), "invalid email format"),
-		"name":    Required(u.Name).When(len(u.Name) < 2, "name too short"),
-		"age":     Optional(u.Age).When(u.Age < 0, "age cannot be negative").When(u.Age > 150, "unrealistic age"),
-		"address": Optional(u.Address),
-		"tags":    Optional(u.Tags).When(len(u.Tags) > 10, "too many tags"),
+		"id":      Required(u.ID).Err(),
+		"email":   Required(u.Email).When(!isValidEmail(u.Email), "invalid email format").Err(),
+		"name":    Required(u.Name).When(len(u.Name) < 2, "name too short").Err(),
+		"age":     Optional(u.Age).When(u.Age < 0, "age cannot be negative").When(u.Age > 150, "unrealistic age").Err(),
+		"address": Optional(u.Address).Err(),
+		"tags":    Optional(u.Tags).When(len(u.Tags) > 10, "too many tags").Err(),
 	}.Err()
 }
 
 // Validate implements validation for Address
 func (a *Address) Validate() error {
 	return Map{
-		"street":   Required(a.Street),
-		"city":     Required(a.City),
-		"country":  Required(a.Country).When(!isValidCountryCode(a.Country), "invalid country code"),
-		"zip_code": Optional(a.ZipCode).When(!isValidZipCode(a.ZipCode), "invalid zip code format"),
+		"street":   Required(a.Street).Err(),
+		"city":     Required(a.City).Err(),
+		"country":  Required(a.Country).When(!isValidCountryCode(a.Country), "invalid country code").Err(),
+		"zip_code": Optional(a.ZipCode).When(!isValidZipCode(a.ZipCode), "invalid zip code format").Err(),
 	}.Err()
 }
 
@@ -189,36 +190,31 @@ type OrderItem struct {
 
 func (o *OrderRequest) Validate() error {
 	return Map{
-		"user_id": Required(o.UserID),
+		"user_id": Required(o.UserID).Err(),
 		"items": Required(o.Items).
 			When(len(o.Items) == 0, "at least one item required").
-			When(len(o.Items) > 100, "too many items"),
-		"shipping_address": Required(o.ShippingAddress),
+			When(len(o.Items) > 100, "too many items").Err(),
+		"shipping_address": Required(o.ShippingAddress).Err(),
 		"payment_method": Required(o.PaymentMethod).
-			When(!isValidPaymentMethod(o.PaymentMethod), "invalid payment method"),
+			When(!isValidPaymentMethod(o.PaymentMethod), "invalid payment method").Err(),
 		"discount": Optional(o.Discount).
 			When(o.Discount != nil && *o.Discount < 0, "discount cannot be negative").
-			When(o.Discount != nil && *o.Discount > 1, "discount cannot exceed 100%"),
+			When(o.Discount != nil && *o.Discount > 1, "discount cannot exceed 100%").Err(),
 	}.Err()
 }
 
 func (item *OrderItem) Validate() error {
 	return Map{
-		"product_id": Required(item.ProductID),
+		"product_id": Required(item.ProductID).Err(),
 		"quantity": Required(item.Quantity).
 			When(item.Quantity <= 0, "quantity must be positive").
-			When(item.Quantity > 1000, "quantity too large"),
+			When(item.Quantity > 1000, "quantity too large").Err(),
 		"price": Required(item.Price).
-			When(item.Price < 0, "price cannot be negative"),
+			When(item.Price < 0, "price cannot be negative").Err(),
 	}.Err()
 }
 
 func isValidPaymentMethod(method string) bool {
 	validMethods := []string{"credit_card", "debit_card", "paypal", "bank_transfer"}
-	for _, valid := range validMethods {
-		if method == valid {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(validMethods, method)
 }

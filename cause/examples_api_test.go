@@ -55,83 +55,113 @@ type PrivacySettings struct {
 func (req *CreateUserAPIRequest) Validate() error {
 	return cause.Map{
 		"username": cause.Required(req.Username).
-			When(len(req.Username) < 3, "username must be at least 3 characters").
-			When(len(req.Username) > 30, "username must not exceed 30 characters").
-			When(!isValidUsername(req.Username), "username contains invalid characters").
-			When(isReservedUsername(req.Username), "username is reserved"),
+			Select(map[string]bool{
+				"username must be at least 3 characters": len(req.Username) < 3,
+				"username must not exceed 30 characters": len(req.Username) > 30,
+				"username contains invalid characters":   !isValidUsername(req.Username),
+				"username is reserved":                   isReservedUsername(req.Username),
+			}),
 
 		"email": cause.Required(req.Email).
-			When(!isValidEmail(req.Email), "invalid email format").
-			When(isDisposableEmail(req.Email), "disposable email addresses not allowed").
-			When(isDomainBlacklisted(req.Email), "email domain is blacklisted"),
+			Select(map[string]bool{
+				"invalid email format":                   !isValidEmail(req.Email),
+				"disposable email addresses not allowed": isDisposableEmail(req.Email),
+				"email domain is blacklisted":            isDomainBlacklisted(req.Email),
+			}),
 
 		"password": cause.Required(req.Password).
-			When(len(req.Password) < 8, "password must be at least 8 characters").
-			When(len(req.Password) > 128, "password must not exceed 128 characters").
-			When(!hasRequiredPasswordComplexity(req.Password), "password does not meet complexity requirements").
-			When(isCommonPassword(req.Password), "password is too common"),
+			Select(map[string]bool{
+				"password must be at least 8 characters":         len(req.Password) < 8,
+				"password must not exceed 128 characters":        len(req.Password) > 128,
+				"password does not meet complexity requirements": !hasRequiredPasswordComplexity(req.Password),
+				"password is too common":                         isCommonPassword(req.Password),
+			}),
 
-		"profile":  cause.Required(req.Profile),
-		"settings": cause.Required(req.Settings),
+		"profile":  cause.Required(req.Profile).Err(),
+		"settings": cause.Required(req.Settings).Err(),
 
 		"metadata": cause.Optional(req.Metadata).
-			When(len(req.Metadata) > 20, "too many metadata fields").
-			When(hasInvalidMetadataKeys(req.Metadata), "metadata contains invalid keys"),
+			Select(map[string]bool{
+				"too many metadata fields":       len(req.Metadata) > 20,
+				"metadata contains invalid keys": hasInvalidMetadataKeys(req.Metadata),
+			}),
 	}.Err()
 }
 
 func (profile *UserProfile) Validate() error {
 	return cause.Map{
 		"first_name": cause.Required(profile.FirstName).
-			When(len(profile.FirstName) < 1, "first name is required").
-			When(len(profile.FirstName) > 50, "first name too long").
-			When(containsInvalidNameChars(profile.FirstName), "first name contains invalid characters"),
+			Select(map[string]bool{
+				"first name is required":                 len(profile.FirstName) < 1,
+				"first name too long":                    len(profile.FirstName) > 50,
+				"first name contains invalid characters": containsInvalidNameChars(profile.FirstName),
+			}),
 
 		"last_name": cause.Required(profile.LastName).
-			When(len(profile.LastName) < 1, "last name is required").
-			When(len(profile.LastName) > 50, "last name too long").
-			When(containsInvalidNameChars(profile.LastName), "last name contains invalid characters"),
+			Select(map[string]bool{
+				"last name is required":                 len(profile.LastName) < 1,
+				"last name too long":                    len(profile.LastName) > 50,
+				"last name contains invalid characters": containsInvalidNameChars(profile.LastName),
+			}),
 
 		"display_name": cause.Optional(profile.DisplayName).
-			When(len(profile.DisplayName) > 100, "display name too long").
-			When(containsProfanity(profile.DisplayName), "display name contains inappropriate content"),
+			Select(map[string]bool{
+				"display name too long":                       len(profile.DisplayName) > 100,
+				"display name contains inappropriate content": containsProfanity(profile.DisplayName),
+			}),
 
 		"bio": cause.Optional(profile.Bio).
-			When(len(profile.Bio) > 500, "bio too long").
-			When(containsProfanity(profile.Bio), "bio contains inappropriate content").
-			When(hasExcessiveLinks(profile.Bio), "bio contains too many links"),
+			Select(map[string]bool{
+				"bio too long":                       len(profile.Bio) > 500,
+				"bio contains inappropriate content": containsProfanity(profile.Bio),
+				"bio contains too many links":        hasExcessiveLinks(profile.Bio),
+			}),
 
 		"avatar": cause.Optional(profile.Avatar).
-			When(!isValidImageURL(profile.Avatar), "invalid avatar image URL").
-			When(!isSupportedImageFormat(profile.Avatar), "unsupported image format"),
+			Select(map[string]bool{
+				"invalid avatar image URL": !isValidImageURL(profile.Avatar),
+				"unsupported image format": !isSupportedImageFormat(profile.Avatar),
+			}),
 
 		"date_of_birth": cause.Optional(profile.DateOfBirth).
-			When(!profile.DateOfBirth.IsZero() && profile.DateOfBirth.After(time.Now()), "date of birth cannot be in the future").
-			When(!profile.DateOfBirth.IsZero() && getAge(profile.DateOfBirth) < 13, "must be at least 13 years old").
-			When(!profile.DateOfBirth.IsZero() && getAge(profile.DateOfBirth) > 120, "invalid date of birth"),
+			Select(map[string]bool{
+				"date of birth cannot be in the future": !profile.DateOfBirth.IsZero() && profile.DateOfBirth.After(time.Now()),
+				"must be at least 13 years old":         !profile.DateOfBirth.IsZero() && getAge(profile.DateOfBirth) < 13,
+				"invalid date of birth":                 !profile.DateOfBirth.IsZero() && getAge(profile.DateOfBirth) > 120,
+			}),
 
 		"location": cause.Optional(profile.Location).
-			When(len(profile.Location) > 100, "location too long"),
+			Select(map[string]bool{
+				"location too long": len(profile.Location) > 100,
+			}),
 
 		"website": cause.Optional(profile.Website).
-			When(!isValidURL(profile.Website), "invalid website URL").
-			When(isMaliciousURL(profile.Website), "website URL appears malicious"),
+			Select(map[string]bool{
+				"invalid website URL":           !isValidURL(profile.Website),
+				"website URL appears malicious": isMaliciousURL(profile.Website),
+			}),
 	}.Err()
 }
 
 func (settings *UserSettings) Validate() error {
 	return cause.Map{
 		"theme": cause.Required(settings.Theme).
-			When(!isValidTheme(settings.Theme), "invalid theme"),
+			Select(map[string]bool{
+				"invalid theme": !isValidTheme(settings.Theme),
+			}),
 
 		"language": cause.Required(settings.Language).
-			When(!isValidLanguageCode(settings.Language), "invalid language code"),
+			Select(map[string]bool{
+				"invalid language code": !isValidLanguageCode(settings.Language),
+			}),
 
 		"timezone": cause.Required(settings.Timezone).
-			When(!isValidTimezone(settings.Timezone), "invalid timezone"),
+			Select(map[string]bool{
+				"invalid timezone": !isValidTimezone(settings.Timezone),
+			}),
 
-		"notifications": cause.Required(settings.Notifications),
-		"privacy":       cause.Required(settings.Privacy),
+		"notifications": cause.Required(settings.Notifications).Err(),
+		"privacy":       cause.Required(settings.Privacy).Err(),
 	}.Err()
 }
 
@@ -210,119 +240,153 @@ type HighlightOptions struct {
 func (req *SearchRequest) Validate() error {
 	return cause.Map{
 		"query": cause.Required(req.Query).
-			When(len(req.Query) < 1, "search query cannot be empty").
-			When(len(req.Query) > 500, "search query too long").
-			When(containsMaliciousPatterns(req.Query), "search query contains potentially malicious patterns").
-			When(isOnlyWhitespace(req.Query), "search query cannot be only whitespace"),
+			Select(map[string]bool{
+				"search query cannot be empty":                         len(req.Query) < 1,
+				"search query too long":                                len(req.Query) > 500,
+				"search query contains potentially malicious patterns": containsMaliciousPatterns(req.Query),
+				"search query cannot be only whitespace":               isOnlyWhitespace(req.Query),
+			}),
 
-		"filters":    cause.Optional(req.Filters),
-		"sort":       cause.Optional(req.Sort),
-		"pagination": cause.Optional(req.Pagination),
+		"filters":    cause.Optional(req.Filters).Err(),
+		"sort":       cause.Optional(req.Sort).Err(),
+		"pagination": cause.Optional(req.Pagination).Err(),
 
 		"facets": cause.Optional(req.Facets).
-			When(len(req.Facets) > 50, "too many facets requested").
-			When(hasInvalidFacets(req.Facets), "contains invalid facet names"),
+			Select(map[string]bool{
+				"too many facets requested":    len(req.Facets) > 50,
+				"contains invalid facet names": hasInvalidFacets(req.Facets),
+			}),
 
-		"highlight": cause.Optional(req.Highlight),
+		"highlight": cause.Optional(req.Highlight).Err(),
 	}.Err()
 }
 
 func (filters *SearchFilters) Validate() error {
 	return cause.Map{
 		"categories": cause.Optional(filters.Categories).
-			When(len(filters.Categories) > 20, "too many categories").
-			When(hasInvalidCategories(filters.Categories), "contains invalid categories"),
+			Select(map[string]bool{
+				"too many categories":         len(filters.Categories) > 20,
+				"contains invalid categories": hasInvalidCategories(filters.Categories),
+			}),
 
-		"price_range": cause.Optional(filters.PriceRange),
-		"date_range":  cause.Optional(filters.DateRange),
-		"location":    cause.Optional(filters.Location),
+		"price_range": cause.Optional(filters.PriceRange).Err(),
+		"date_range":  cause.Optional(filters.DateRange).Err(),
+		"location":    cause.Optional(filters.Location).Err(),
 
 		"custom_filters": cause.Optional(filters.CustomFilters).
-			When(len(filters.CustomFilters) > 10, "too many custom filters").
-			When(hasInvalidCustomFilterKeys(filters.CustomFilters), "contains invalid filter keys"),
+			Select(map[string]bool{
+				"too many custom filters":      len(filters.CustomFilters) > 10,
+				"contains invalid filter keys": hasInvalidCustomFilterKeys(filters.CustomFilters),
+			}),
 	}.Err()
 }
 
 func (pr *PriceRange) Validate() error {
 	return cause.Map{
 		"min": cause.Required(pr.Min).
-			When(pr.Min < 0, "minimum price cannot be negative"),
+			When(pr.Min < 0, "minimum price cannot be negative").Err(),
 
-		"max": cause.Required(pr.Max).
-			When(pr.Max < 0, "maximum price cannot be negative").
-			When(pr.Max <= pr.Min, "maximum price must be greater than minimum price").
-			When(pr.Max > 1000000, "maximum price too high"),
+		"max": cause.Required(pr.Max).Select(map[string]bool{
+			"maximum price cannot be negative":                 pr.Max < 0,
+			"maximum price must be greater than minimum price": pr.Max <= pr.Min,
+			"maximum price too high":                           pr.Max > 1000000,
+		}),
 
 		"currency": cause.Required(pr.Currency).
-			When(!isValidCurrencyCode(pr.Currency), "invalid currency code"),
+			When(!isValidCurrencyCode(pr.Currency), "invalid currency code").Err(),
 	}.Err()
 }
 
 func (dr *DateRange) Validate() error {
 	return cause.Map{
 		"start": cause.Required(dr.Start).
-			When(dr.Start.After(time.Now().AddDate(10, 0, 0)), "start date too far in future"),
+			When(dr.Start.After(time.Now().AddDate(10, 0, 0)), "start date too far in future").Err(),
 
-		"end": cause.Required(dr.End).
-			When(dr.End.Before(dr.Start), "end date must be after start date").
-			When(dr.End.After(time.Now().AddDate(10, 0, 0)), "end date too far in future").
-			When(dr.End.Sub(dr.Start) > 365*24*time.Hour, "date range too large (max 1 year)"),
+		"end": cause.Required(dr.End).Select(map[string]bool{
+			"end date must be after start date": dr.End.Before(dr.Start),
+			"end date too far in future":        dr.End.After(time.Now().AddDate(10, 0, 0)),
+			"date range too large (max 1 year)": dr.End.Sub(dr.Start) > 365*24*time.Hour,
+		}),
 	}.Err()
 }
 
 func (lf *LocationFilter) Validate() error {
 	return cause.Map{
 		"latitude": cause.Required(lf.Latitude).
-			When(lf.Latitude < -90 || lf.Latitude > 90, "latitude must be between -90 and 90"),
+			Select(map[string]bool{
+				"latitude must be between -90 and 90": lf.Latitude < -90 || lf.Latitude > 90,
+			}),
 
 		"longitude": cause.Required(lf.Longitude).
-			When(lf.Longitude < -180 || lf.Longitude > 180, "longitude must be between -180 and 180"),
+			Select(map[string]bool{
+				"longitude must be between -180 and 180": lf.Longitude < -180 || lf.Longitude > 180,
+			}),
 
 		"radius": cause.Required(lf.Radius).
-			When(lf.Radius <= 0, "radius must be positive").
-			When(lf.Radius > 1000, "radius too large (max 1000)"),
+			Select(map[string]bool{
+				"radius must be positive":     lf.Radius <= 0,
+				"radius too large (max 1000)": lf.Radius > 1000,
+			}),
 
 		"unit": cause.Required(lf.Unit).
-			When(!isValidDistanceUnit(lf.Unit), "invalid distance unit"),
+			Select(map[string]bool{
+				"invalid distance unit": !isValidDistanceUnit(lf.Unit),
+			}),
 	}.Err()
 }
 
 func (so *SortOptions) Validate() error {
 	return cause.Map{
 		"field": cause.Required(so.Field).
-			When(!isValidSortField(so.Field), "invalid sort field"),
+			Select(map[string]bool{
+				"invalid sort field": !isValidSortField(so.Field),
+			}),
 
 		"direction": cause.Required(so.Direction).
-			When(!isValidSortDirection(so.Direction), "invalid sort direction"),
+			Select(map[string]bool{
+				"invalid sort direction": !isValidSortDirection(so.Direction),
+			}),
 
 		"secondary": cause.Optional(so.Secondary).
-			When(len(so.Secondary) > 5, "too many secondary sort fields"),
+			Select(map[string]bool{
+				"too many secondary sort fields": len(so.Secondary) > 5,
+			}),
 	}.Err()
 }
 
 func (sf *SortField) Validate() error {
 	return cause.Map{
 		"field": cause.Required(sf.Field).
-			When(!isValidSortField(sf.Field), "invalid sort field"),
+			Select(map[string]bool{
+				"invalid sort field": !isValidSortField(sf.Field),
+			}),
 
 		"direction": cause.Required(sf.Direction).
-			When(!isValidSortDirection(sf.Direction), "invalid sort direction"),
+			Select(map[string]bool{
+				"invalid sort direction": !isValidSortDirection(sf.Direction),
+			}),
 	}.Err()
 }
 
 func (po *PaginationOptions) Validate() error {
 	return cause.Map{
 		"page": cause.Required(po.Page).
-			When(po.Page < 1, "page must be at least 1").
-			When(po.Page > 10000, "page number too high"),
+			Select(map[string]bool{
+				"page must be at least 1": po.Page < 1,
+				"page number too high":    po.Page > 10000,
+			}),
 
 		"page_size": cause.Required(po.PageSize).
-			When(po.PageSize < 1, "page size must be at least 1").
-			When(po.PageSize > 1000, "page size too large (max 1000)"),
+			Select(map[string]bool{
+				"page size must be at least 1":   po.PageSize < 1,
+				"page size too large (max 1000)": po.PageSize > 1000,
+			}),
 
 		"offset": cause.Optional(po.Offset).
-			When(po.Offset < 0, "offset cannot be negative").
-			When(po.Offset > 100000, "offset too large"),
+			Select(map[string]bool{
+				"offset cannot be negative": po.Offset < 0,
+				"offset too large":          po.Offset > 100000,
+			}),
 	}.Err()
 }
 
@@ -333,18 +397,26 @@ func (ho *HighlightOptions) Validate() error {
 
 	return cause.Map{
 		"fields": cause.Optional(ho.Fields).
-			When(len(ho.Fields) > 20, "too many highlight fields").
-			When(hasInvalidHighlightFields(ho.Fields), "contains invalid highlight fields"),
+			Select(map[string]bool{
+				"too many highlight fields":         len(ho.Fields) > 20,
+				"contains invalid highlight fields": hasInvalidHighlightFields(ho.Fields),
+			}),
 
 		"pre_tag": cause.Optional(ho.PreTag).
-			When(len(ho.PreTag) > 50, "pre tag too long"),
+			Select(map[string]bool{
+				"pre tag too long": len(ho.PreTag) > 50,
+			}),
 
 		"post_tag": cause.Optional(ho.PostTag).
-			When(len(ho.PostTag) > 50, "post tag too long"),
+			Select(map[string]bool{
+				"post tag too long": len(ho.PostTag) > 50,
+			}),
 
 		"max_snippets": cause.Optional(ho.MaxSnippets).
-			When(ho.MaxSnippets < 0, "max snippets cannot be negative").
-			When(ho.MaxSnippets > 100, "max snippets too high"),
+			Select(map[string]bool{
+				"max snippets cannot be negative": ho.MaxSnippets < 0,
+				"max snippets too high":           ho.MaxSnippets > 100,
+			}),
 	}.Err()
 }
 

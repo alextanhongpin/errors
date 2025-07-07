@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/alextanhongpin/errors/cause"
 )
@@ -11,12 +12,14 @@ import (
 type User struct {
 	Age  int
 	Name string
+	Bio  string
 }
 
 func (u *User) Validate() error {
 	return cause.Map{
-		"age":  cause.Optional(u.Age).When(u.Age < 13, "under age limit"),
-		"name": cause.Required(u.Name),
+		"age":  cause.Optional(u.Age).When(u.Age < 13, "under age limit").Err(),
+		"name": cause.Required(u.Name).Err(),
+		"bio":  cause.Optional(u.Bio).When(len(u.Bio) > 255, "bio too long").Err(),
 	}.Err()
 }
 
@@ -79,6 +82,25 @@ func ExampleFields_user_invalid_age_and_name() {
 	// err: invalid fields: age, name
 	// {
 	//   "age": "under age limit",
+	//   "name": "required"
+	// }
+}
+
+func ExampleFields_user_long_bio() {
+	u := &User{
+		Name: "",
+		Age:  12,
+		Bio:  strings.Repeat("a", 256), // Bio is too long.
+	}
+	validateUser(u)
+
+	// Output:
+	// is map: true
+	// is nil: false
+	// err: invalid fields: age, bio, name
+	// {
+	//   "age": "under age limit",
+	//   "bio": "bio too long",
 	//   "name": "required"
 	// }
 }

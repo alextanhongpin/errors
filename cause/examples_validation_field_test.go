@@ -25,7 +25,7 @@ type Account struct {
 
 func (a *Account) Validate() error {
 	return cause.Map{
-		"email": cause.Required(a.Email),
+		"email": cause.Required(a.Email).Err(),
 	}.Err()
 }
 

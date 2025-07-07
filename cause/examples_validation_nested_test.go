@@ -15,9 +15,9 @@ type Node struct {
 
 func (n *Node) Validate() error {
 	return cause.Map{
-		"name":  cause.Required(n.Name),
-		"node":  cause.Optional(n.Node),
-		"nodes": cause.Optional(n.Nodes).When(len(n.Nodes) > 3, "too many nodes"),
+		"name":  cause.Required(n.Name).Err(),
+		"node":  cause.Optional(n.Node).Err(),
+		"nodes": cause.Optional(n.Nodes).When(len(n.Nodes) > 3, "too many nodes").Err(),
 	}.Err()
 }
 

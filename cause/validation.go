@@ -28,7 +28,7 @@ type validatable interface {
 //	    "name": Required(user.Name),
 //	    "age":  Optional(user.Age).When(user.Age < 0, "must be positive"),
 //	}.Err()
-type Map map[string]any
+type Map map[string]error
 
 // Err processes the validation map and returns a structured error if any
 // validations failed. It handles nested validations, slice validations,
@@ -40,26 +40,23 @@ func (m Map) Err() error {
 			continue
 		}
 
-		switch t := v.(type) {
-		case validatable:
-			if err := t.Validate(); err != nil {
-				var errs = []error{err}
-				for len(errs) > 0 {
-					err = errs[0]
-					errs = errs[1:]
+		var (
+			err  error
+			errs = []error{v}
+		)
 
-					switch e := err.(type) {
-					case errorMulti:
-						errs = append(errs, e...)
-					case errorIndex:
-						em[fmt.Sprintf("%s[%d]", k, e.pos)] = e.err
-					default:
-						em[k] = e
-					}
-				}
+		for len(errs) > 0 {
+			err = errs[0]
+			errs = errs[1:]
+
+			switch e := err.(type) {
+			case errorMulti:
+				errs = append(errs, e...)
+			case errorIndex:
+				em[fmt.Sprintf("%s[%d]", k, e.pos)] = e.err
+			default:
+				em[k] = e
 			}
-		default:
-			em[k] = v
 		}
 	}
 
@@ -91,7 +88,7 @@ func Optional(val any) *Builder {
 		return nil
 	}
 
-	if v, ok := isSlice(val); ok {
+	if v, ok := asSlice(val); ok {
 		return &Builder{
 			v: v,
 		}
@@ -122,7 +119,7 @@ func RequiredMessage(val any, msg string) *Builder {
 		}
 	}
 
-	if v, ok := isSlice(val); ok {
+	if v, ok := asSlice(val); ok {
 		return &Builder{
 			v: v,
 		}
@@ -164,6 +161,20 @@ type Builder struct {
 	v    validatable // Nested validatable object
 }
 
+func (b *Builder) Select(m map[string]bool) error {
+	if b == nil {
+		return nil
+	}
+
+	for _, key := range slices.Sorted(maps.Keys(m)) {
+		if m[key] {
+			b.msgs = append(b.msgs, key)
+		}
+	}
+
+	return b.Validate()
+}
+
 // When adds a conditional validation message to the builder.
 // If the condition is true, the message is added to the validation errors.
 // If the builder is nil (from Optional with zero value), this method
@@ -177,11 +188,16 @@ func (b *Builder) When(cond bool, msg string) *Builder {
 		return nil
 	}
 
-	if cond {
+	msg = strings.TrimSpace(msg)
+	if cond && msg != "" {
 		b.msgs = append(b.msgs, msg)
 	}
 
 	return b
+}
+
+func (b *Builder) Err() error {
+	return b.Validate()
 }
 
 // Validate executes the validation chain and returns any accumulated errors.
@@ -193,8 +209,9 @@ func (b *Builder) Validate() error {
 	}
 
 	var errs errorMulti
-	if msg := joinStrings(b.msgs...); msg != "" {
-		errs = append(errs, errors.New(msg))
+	// If there are accumulated messages, return them as a single error.
+	if len(b.msgs) > 0 {
+		errs = append(errs, errors.New(strings.Join(b.msgs, ", ")))
 	}
 
 	if b.v != nil {
@@ -203,11 +220,14 @@ func (b *Builder) Validate() error {
 		}
 	}
 
-	if len(errs) == 0 {
+	switch len(errs) {
+	case 0:
 		return nil
+	case 1:
+		return errs[0]
+	default:
+		return errs
 	}
-
-	return errs
 }
 
 // errorMap represents a collection of field-level validation errors.
@@ -229,9 +249,9 @@ func (e errorMap) String() string {
 	return strings.Join(slices.Sorted(maps.Keys(e)), ", ")
 }
 
-// isSlice checks if the given value is a slice of validatable items.
+// asSlice checks if the given value is a slice of validatable items.
 // Returns a sliceValidator and true if successful, nil and false otherwise.
-func isSlice(t any) (sliceValidator, bool) {
+func asSlice(t any) (sliceValidator, bool) {
 	v := reflect.ValueOf(t)
 	if v.Kind() == reflect.Slice {
 		result := make([]validatable, v.Len())
@@ -262,24 +282,6 @@ func isZero(t any) bool {
 	}
 
 	return v.IsZero()
-}
-
-// joinStrings joins non-empty strings with commas.
-func joinStrings(s ...string) string {
-	return strings.Join(filterZero(s), ", ")
-}
-
-// filterZero removes zero values from a slice.
-func filterZero[T comparable](s []T) []T {
-	var res []T
-	var zero T
-	for _, v := range s {
-		if v != zero {
-			res = append(res, v)
-		}
-	}
-
-	return res
 }
 
 // validator wraps an error to make it validatable.

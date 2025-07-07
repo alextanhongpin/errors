@@ -97,21 +97,25 @@ type VitalSigns struct {
 func (pr *PatientRecord) Validate() error {
 	return cause.Map{
 		"patient_id": cause.Required(pr.PatientID).
-			When(!isValidPatientID(pr.PatientID), "invalid patient ID format").
-			When(len(pr.PatientID) > 20, "patient ID too long"),
+			Select(map[string]bool{
+				"invalid patient ID format": !isValidPatientID(pr.PatientID),
+				"patient ID too long":       len(pr.PatientID) > 20,
+			}),
 
 		"medical_number": cause.Required(pr.MedicalNumber).
-			When(!isValidMedicalNumber(pr.MedicalNumber), "invalid medical record number format").
-			When(len(pr.MedicalNumber) < 8, "medical number too short").
-			When(len(pr.MedicalNumber) > 15, "medical number too long"),
+			Select(map[string]bool{
+				"invalid medical record number format": !isValidMedicalNumber(pr.MedicalNumber),
+				"medical number too short":             len(pr.MedicalNumber) < 8,
+				"medical number too long":              len(pr.MedicalNumber) > 15,
+			}),
 
-		"personal_info":       cause.Required(pr.PersonalInfo),
-		"medical_history":     cause.Optional(pr.MedicalHistory),
-		"allergies":           cause.Optional(pr.Allergies),
-		"current_medications": cause.Optional(pr.Medications),
-		"emergency_contact":   cause.Required(pr.EmergencyContact),
-		"insurance":           cause.Required(pr.Insurance),
-		"vitals":              cause.Optional(pr.Vitals),
+		"personal_info":       cause.Required(pr.PersonalInfo).Err(),
+		"medical_history":     cause.Optional(pr.MedicalHistory).Err(),
+		"allergies":           cause.Optional(pr.Allergies).Err(),
+		"current_medications": cause.Optional(pr.Medications).Err(),
+		"emergency_contact":   cause.Required(pr.EmergencyContact).Err(),
+		"insurance":           cause.Required(pr.Insurance).Err(),
+		"vitals":              cause.Optional(pr.Vitals).Err(),
 	}.Err()
 }
 
@@ -119,214 +123,294 @@ func (pi *PersonalInfo) Validate() error {
 	age := getAge(pi.DateOfBirth)
 	return cause.Map{
 		"first_name": cause.Required(pi.FirstName).
-			When(len(pi.FirstName) < 1, "first name is required").
-			When(len(pi.FirstName) > 50, "first name too long").
-			When(containsNumbers(pi.FirstName), "first name cannot contain numbers"),
+			Select(map[string]bool{
+				"first name is required":            len(pi.FirstName) < 1,
+				"first name too long":               len(pi.FirstName) > 50,
+				"first name cannot contain numbers": containsNumbers(pi.FirstName),
+			}),
 
 		"last_name": cause.Required(pi.LastName).
-			When(len(pi.LastName) < 1, "last name is required").
-			When(len(pi.LastName) > 50, "last name too long").
-			When(containsNumbers(pi.LastName), "last name cannot contain numbers"),
+			Select(map[string]bool{
+				"last name is required":            len(pi.LastName) < 1,
+				"last name too long":               len(pi.LastName) > 50,
+				"last name cannot contain numbers": containsNumbers(pi.LastName),
+			}),
 
 		"date_of_birth": cause.Required(pi.DateOfBirth).
-			When(pi.DateOfBirth.After(time.Now()), "date of birth cannot be in the future").
-			When(age > 150, "invalid date of birth - age too high").
-			When(age < 0, "invalid date of birth"),
+			Select(map[string]bool{
+				"date of birth cannot be in the future": pi.DateOfBirth.After(time.Now()),
+				"invalid date of birth - age too high":  age > 150,
+				"invalid date of birth":                 age < 0,
+			}),
 
 		"gender": cause.Required(pi.Gender).
-			When(!isValidGender(pi.Gender), "invalid gender value"),
+			When(!isValidGender(pi.Gender), "invalid gender value").Err(),
 
 		"blood_type": cause.Required(pi.BloodType).
-			When(!isValidBloodType(pi.BloodType), "invalid blood type"),
+			When(!isValidBloodType(pi.BloodType), "invalid blood type").Err(),
 
 		"height_cm": cause.Required(pi.Height).
-			When(pi.Height <= 0, "height must be positive").
-			When(pi.Height < 30 || pi.Height > 300, "height outside normal range").
-			When(age >= 18 && pi.Height < 120, "height unusually low for adult"),
+			Select(map[string]bool{
+				"height must be positive":        pi.Height <= 0,
+				"height outside normal range":    pi.Height < 30 || pi.Height > 300,
+				"height unusually low for adult": age >= 18 && pi.Height < 120,
+			}),
 
 		"weight_kg": cause.Required(pi.Weight).
-			When(pi.Weight <= 0, "weight must be positive").
-			When(pi.Weight < 1 || pi.Weight > 500, "weight outside normal range").
-			When(age >= 18 && pi.Weight < 30, "weight unusually low for adult"),
+			Select(map[string]bool{
+				"weight must be positive":        pi.Weight <= 0,
+				"weight outside normal range":    pi.Weight < 1 || pi.Weight > 500,
+				"weight unusually low for adult": age >= 18 && pi.Weight < 30,
+			}),
 
 		"phone_number": cause.Required(pi.PhoneNumber).
-			When(!isValidPhoneNumber(pi.PhoneNumber), "invalid phone number format"),
+			When(!isValidPhoneNumber(pi.PhoneNumber), "invalid phone number format").Err(),
 
 		"email": cause.Optional(pi.Email).
-			When(!isValidEmail(pi.Email), "invalid email format"),
+			When(!isValidEmail(pi.Email), "invalid email format").Err(),
 
-		"address": cause.Required(pi.Address),
+		"address": cause.Required(pi.Address).Err(),
 	}.Err()
 }
 
 func (me *MedicalEntry) Validate() error {
 	return cause.Map{
 		"date": cause.Required(me.Date).
-			When(me.Date.After(time.Now()), "medical entry date cannot be in the future").
-			When(me.Date.Before(time.Date(1900, 1, 1, 0, 0, 0, 0, time.UTC)), "medical entry date too old"),
+			Select(map[string]bool{
+				"medical entry date cannot be in the future": me.Date.After(time.Now()),
+				"medical entry date too old":                 me.Date.Before(time.Date(1900, 1, 1, 0, 0, 0, 0, time.UTC)),
+			}),
 
 		"condition": cause.Required(me.Condition).
-			When(len(me.Condition) < 3, "condition description too short").
-			When(len(me.Condition) > 100, "condition description too long"),
+			Select(map[string]bool{
+				"condition description too short": len(me.Condition) < 3,
+				"condition description too long":  len(me.Condition) > 100,
+			}),
 
 		"diagnosis": cause.Required(me.Diagnosis).
-			When(len(me.Diagnosis) < 5, "diagnosis too short").
-			When(len(me.Diagnosis) > 500, "diagnosis too long"),
+			Select(map[string]bool{
+				"diagnosis too short": len(me.Diagnosis) < 5,
+				"diagnosis too long":  len(me.Diagnosis) > 500,
+			}),
 
 		"treatment": cause.Required(me.Treatment).
-			When(len(me.Treatment) < 3, "treatment description too short").
-			When(len(me.Treatment) > 1000, "treatment description too long"),
+			Select(map[string]bool{
+				"treatment description too short": len(me.Treatment) < 3,
+				"treatment description too long":  len(me.Treatment) > 1000,
+			}),
 
 		"doctor_id": cause.Required(me.DoctorID).
-			When(!isValidDoctorID(me.DoctorID), "invalid doctor ID format"),
+			When(!isValidDoctorID(me.DoctorID), "invalid doctor ID format").Err(),
 
 		"severity": cause.Required(me.Severity).
-			When(!isValidSeverity(me.Severity), "invalid severity level"),
+			When(!isValidSeverity(me.Severity), "invalid severity level").Err(),
 
 		"notes": cause.Optional(me.Notes).
-			When(len(me.Notes) > 2000, "notes too long"),
+			When(len(me.Notes) > 2000, "notes too long").Err(),
 
 		"follow_up_date": cause.Optional(me.FollowUpDate).
-			When(me.FollowUpDate != nil && me.FollowUpDate.Before(me.Date), "follow-up date cannot be before entry date").
-			When(me.FollowUpDate != nil && me.FollowUpDate.After(time.Now().AddDate(2, 0, 0)), "follow-up date too far in future"),
+			Select(map[string]bool{
+				"follow-up date cannot be before entry date": me.FollowUpDate != nil && me.FollowUpDate.Before(me.Date),
+				"follow-up date too far in future":           me.FollowUpDate != nil && me.FollowUpDate.After(time.Now().AddDate(2, 0, 0)),
+			}),
 	}.Err()
 }
 
 func (a *Allergy) Validate() error {
 	return cause.Map{
 		"allergen": cause.Required(a.Allergen).
-			When(len(a.Allergen) < 2, "allergen name too short").
-			When(len(a.Allergen) > 100, "allergen name too long"),
+			Select(map[string]bool{
+				"allergen name too short": len(a.Allergen) < 2,
+				"allergen name too long":  len(a.Allergen) > 100,
+			}),
 
 		"reaction": cause.Required(a.Reaction).
-			When(len(a.Reaction) < 3, "reaction description too short").
-			When(len(a.Reaction) > 200, "reaction description too long"),
+			Select(map[string]bool{
+				"reaction description too short": len(a.Reaction) < 3,
+				"reaction description too long":  len(a.Reaction) > 200,
+			}),
 
 		"severity": cause.Required(a.Severity).
-			When(!isValidAllergySeverity(a.Severity), "invalid allergy severity level"),
+			When(!isValidAllergySeverity(a.Severity), "invalid allergy severity level").Err(),
 
 		"diagnosed_date": cause.Required(a.DiagnosedDate).
-			When(a.DiagnosedDate.After(time.Now()), "diagnosed date cannot be in the future").
-			When(a.DiagnosedDate.Before(time.Date(1900, 1, 1, 0, 0, 0, 0, time.UTC)), "diagnosed date too old"),
+			Select(map[string]bool{
+				"diagnosed date cannot be in the future": a.DiagnosedDate.After(time.Now()),
+				"diagnosed date too old":                 a.DiagnosedDate.Before(time.Date(1900, 1, 1, 0, 0, 0, 0, time.UTC)),
+			}),
 
 		"notes": cause.Optional(a.Notes).
-			When(len(a.Notes) > 500, "notes too long"),
+			When(len(a.Notes) > 500, "notes too long").Err(),
 	}.Err()
 }
 
 func (m *Medication) Validate() error {
 	return cause.Map{
 		"name": cause.Required(m.Name).
-			When(len(m.Name) < 2, "medication name too short").
-			When(len(m.Name) > 100, "medication name too long"),
+			Select(map[string]bool{
+				"medication name too short": len(m.Name) < 2,
+				"medication name too long":  len(m.Name) > 100,
+			}),
 
 		"dosage": cause.Required(m.Dosage).
-			When(!isValidDosage(m.Dosage), "invalid dosage format").
-			When(len(m.Dosage) > 50, "dosage description too long"),
+			Select(map[string]bool{
+				"invalid dosage format":       !isValidDosage(m.Dosage),
+				"dosage description too long": len(m.Dosage) > 50,
+			}),
 
 		"frequency": cause.Required(m.Frequency).
-			When(!isValidMedicationFrequency(m.Frequency), "invalid medication frequency"),
+			Select(map[string]bool{
+				"invalid medication frequency": !isValidMedicationFrequency(m.Frequency),
+			}),
 
 		"start_date": cause.Required(m.StartDate).
-			When(m.StartDate.After(time.Now().AddDate(0, 0, 1)), "start date cannot be more than 1 day in future").
-			When(m.StartDate.Before(time.Date(1900, 1, 1, 0, 0, 0, 0, time.UTC)), "start date too old"),
+			Select(map[string]bool{
+				"start date cannot be more than 1 day in future": m.StartDate.After(time.Now().AddDate(0, 0, 1)),
+				"start date too old":                             m.StartDate.Before(time.Date(1900, 1, 1, 0, 0, 0, 0, time.UTC)),
+			}),
 
 		"end_date": cause.Optional(m.EndDate).
-			When(m.EndDate != nil && m.EndDate.Before(m.StartDate), "end date cannot be before start date").
-			When(m.EndDate != nil && m.EndDate.After(time.Now().AddDate(10, 0, 0)), "end date too far in future"),
+			Select(map[string]bool{
+				"end date cannot be before start date": m.EndDate != nil && m.EndDate.Before(m.StartDate),
+				"end date too far in future":           m.EndDate != nil && m.EndDate.After(time.Now().AddDate(10, 0, 0)),
+			}),
 
 		"prescribed_by": cause.Required(m.PrescribedBy).
-			When(!isValidDoctorID(m.PrescribedBy), "invalid prescribing doctor ID"),
+			Select(map[string]bool{
+				"invalid prescribing doctor ID": !isValidDoctorID(m.PrescribedBy),
+			}),
 
 		"purpose": cause.Required(m.Purpose).
-			When(len(m.Purpose) < 5, "medication purpose too short").
-			When(len(m.Purpose) > 200, "medication purpose too long"),
+			Select(map[string]bool{
+				"medication purpose too short": len(m.Purpose) < 5,
+				"medication purpose too long":  len(m.Purpose) > 200,
+			}),
 
 		"side_effects": cause.Optional(m.SideEffects).
-			When(len(m.SideEffects) > 20, "too many side effects listed"),
+			Select(map[string]bool{
+				"too many side effects listed": len(m.SideEffects) > 20,
+			}),
 	}.Err()
 }
 
 func (ec *MedicalEmergencyContact) Validate() error {
 	return cause.Map{
 		"name": cause.Required(ec.Name).
-			When(len(ec.Name) < 2, "emergency contact name too short").
-			When(len(ec.Name) > 100, "emergency contact name too long"),
+			Select(map[string]bool{
+				"emergency contact name too short": len(ec.Name) < 2,
+				"emergency contact name too long":  len(ec.Name) > 100,
+			}),
 
 		"relationship": cause.Required(ec.Relationship).
-			When(!isValidMedicalRelationship(ec.Relationship), "invalid relationship type"),
+			Select(map[string]bool{
+				"invalid relationship type": !isValidMedicalRelationship(ec.Relationship),
+			}),
 
 		"phone_number": cause.Required(ec.PhoneNumber).
-			When(!isValidPhoneNumber(ec.PhoneNumber), "invalid emergency contact phone number"),
+			Select(map[string]bool{
+				"invalid emergency contact phone number": !isValidPhoneNumber(ec.PhoneNumber),
+			}),
 
 		"email": cause.Optional(ec.Email).
-			When(!isValidEmail(ec.Email), "invalid emergency contact email"),
+			Select(map[string]bool{
+				"invalid emergency contact email": !isValidEmail(ec.Email),
+			}),
 
-		"address": cause.Required(ec.Address),
+		"address": cause.Required(ec.Address).Err(),
 	}.Err()
 }
 
 func (ii *InsuranceInfo) Validate() error {
 	return cause.Map{
 		"provider": cause.Required(ii.Provider).
-			When(len(ii.Provider) < 2, "insurance provider name too short").
-			When(len(ii.Provider) > 100, "insurance provider name too long"),
+			Select(map[string]bool{
+				"insurance provider name too short": len(ii.Provider) < 2,
+				"insurance provider name too long":  len(ii.Provider) > 100,
+			}),
 
 		"policy_number": cause.Required(ii.PolicyNumber).
-			When(!isValidPolicyNumber(ii.PolicyNumber), "invalid policy number format").
-			When(len(ii.PolicyNumber) < 5, "policy number too short").
-			When(len(ii.PolicyNumber) > 30, "policy number too long"),
+			Select(map[string]bool{
+				"invalid policy number format": !isValidPolicyNumber(ii.PolicyNumber),
+				"policy number too short":      len(ii.PolicyNumber) < 5,
+				"policy number too long":       len(ii.PolicyNumber) > 30,
+			}),
 
 		"group_number": cause.Optional(ii.GroupNumber).
-			When(len(ii.GroupNumber) > 20, "group number too long"),
+			Select(map[string]bool{
+				"group number too long": len(ii.GroupNumber) > 20,
+			}),
 
 		"valid_from": cause.Required(ii.ValidFrom).
-			When(ii.ValidFrom.After(time.Now().AddDate(0, 1, 0)), "insurance valid from date too far in future"),
+			Select(map[string]bool{
+				"insurance valid from date too far in future": ii.ValidFrom.After(time.Now().AddDate(0, 1, 0)),
+			}),
 
 		"valid_to": cause.Required(ii.ValidTo).
-			When(ii.ValidTo.Before(ii.ValidFrom), "insurance valid to date cannot be before valid from date").
-			When(ii.ValidTo.Before(time.Now().AddDate(0, -1, 0)), "insurance has been expired for too long"),
+			Select(map[string]bool{
+				"insurance valid to date cannot be before valid from date": ii.ValidTo.Before(ii.ValidFrom),
+				"insurance has been expired for too long":                  ii.ValidTo.Before(time.Now().AddDate(0, -1, 0)),
+			}),
 
 		"copay": cause.Required(ii.Copay).
-			When(ii.Copay < 0, "copay cannot be negative").
-			When(ii.Copay > 10000, "copay amount unusually high"),
+			Select(map[string]bool{
+				"copay cannot be negative":    ii.Copay < 0,
+				"copay amount unusually high": ii.Copay > 10000,
+			}),
 
 		"deductible": cause.Required(ii.Deductible).
-			When(ii.Deductible < 0, "deductible cannot be negative").
-			When(ii.Deductible > 100000, "deductible amount unusually high"),
+			Select(map[string]bool{
+				"deductible cannot be negative":    ii.Deductible < 0,
+				"deductible amount unusually high": ii.Deductible > 100000,
+			}),
 	}.Err()
 }
 
 func (vs *VitalSigns) Validate() error {
 	return cause.Map{
 		"bp_systolic": cause.Required(vs.BloodPressureSystolic).
-			When(vs.BloodPressureSystolic < 50 || vs.BloodPressureSystolic > 300, "systolic blood pressure outside normal range").
-			When(vs.BloodPressureSystolic <= vs.BloodPressureDiastolic, "systolic pressure must be higher than diastolic"),
+			Select(map[string]bool{
+				"systolic blood pressure outside normal range":    vs.BloodPressureSystolic < 50 || vs.BloodPressureSystolic > 300,
+				"systolic pressure must be higher than diastolic": vs.BloodPressureSystolic <= vs.BloodPressureDiastolic,
+			}),
 
 		"bp_diastolic": cause.Required(vs.BloodPressureDiastolic).
-			When(vs.BloodPressureDiastolic < 30 || vs.BloodPressureDiastolic > 200, "diastolic blood pressure outside normal range"),
+			Select(map[string]bool{
+				"diastolic blood pressure outside normal range": vs.BloodPressureDiastolic < 30 || vs.BloodPressureDiastolic > 200,
+			}),
 
 		"heart_rate": cause.Required(vs.HeartRate).
-			When(vs.HeartRate < 30 || vs.HeartRate > 250, "heart rate outside normal range"),
+			Select(map[string]bool{
+				"heart rate outside normal range": vs.HeartRate < 30 || vs.HeartRate > 250,
+			}),
 
 		"temperature_celsius": cause.Required(vs.Temperature).
-			When(vs.Temperature < 30.0 || vs.Temperature > 45.0, "body temperature outside viable range").
-			When(vs.Temperature < 35.0, "hypothermia detected - temperature too low").
-			When(vs.Temperature > 42.0, "hyperthermia detected - temperature too high"),
+			Select(map[string]bool{
+				"body temperature outside viable range":        vs.Temperature < 30.0 || vs.Temperature > 45.0,
+				"hypothermia detected - temperature too low":   vs.Temperature < 35.0,
+				"hyperthermia detected - temperature too high": vs.Temperature > 42.0,
+			}),
 
 		"oxygen_saturation": cause.Required(vs.OxygenSaturation).
-			When(vs.OxygenSaturation < 70 || vs.OxygenSaturation > 100, "oxygen saturation outside normal range").
-			When(vs.OxygenSaturation < 90, "critically low oxygen saturation"),
+			Select(map[string]bool{
+				"oxygen saturation outside normal range": vs.OxygenSaturation < 70 || vs.OxygenSaturation > 100,
+				"critically low oxygen saturation":       vs.OxygenSaturation < 90,
+			}),
 
 		"respiratory_rate": cause.Required(vs.RespiratoryRate).
-			When(vs.RespiratoryRate < 5 || vs.RespiratoryRate > 60, "respiratory rate outside normal range"),
+			Select(map[string]bool{
+				"respiratory rate outside normal range": vs.RespiratoryRate < 5 || vs.RespiratoryRate > 60,
+			}),
 
 		"recorded_at": cause.Required(vs.RecordedAt).
-			When(vs.RecordedAt.After(time.Now()), "vital signs cannot be recorded in the future").
-			When(vs.RecordedAt.Before(time.Now().AddDate(0, 0, -30)), "vital signs too old"),
+			Select(map[string]bool{
+				"vital signs cannot be recorded in the future": vs.RecordedAt.After(time.Now()),
+				"vital signs too old":                          vs.RecordedAt.Before(time.Now().AddDate(0, 0, -30)),
+			}),
 
 		"recorded_by": cause.Required(vs.RecordedBy).
-			When(!isValidStaffID(vs.RecordedBy), "invalid staff ID for recorder"),
+			Select(map[string]bool{
+				"invalid staff ID for recorder": !isValidStaffID(vs.RecordedBy),
+			}),
 	}.Err()
 }
 

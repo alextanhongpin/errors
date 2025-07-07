@@ -104,26 +104,26 @@ func (se *StudentEnrollment) Validate() error {
 	return cause.Map{
 		"student_id": cause.Required(se.StudentID).
 			When(!isValidStudentID(se.StudentID), "invalid student ID format").
-			When(len(se.StudentID) > 15, "student ID too long"),
+			When(len(se.StudentID) > 15, "student ID too long").Err(),
 
 		"student_number": cause.Required(se.StudentNumber).
 			When(!isValidStudentNumber(se.StudentNumber), "invalid student number format").
 			When(len(se.StudentNumber) < 6, "student number too short").
-			When(len(se.StudentNumber) > 12, "student number too long"),
+			When(len(se.StudentNumber) > 12, "student number too long").Err(),
 
-		"personal_info": cause.Required(se.PersonalInfo),
-		"academic_info": cause.Required(se.AcademicInfo),
-		"courses":       cause.Optional(se.Courses),
-		"guardian":      cause.Optional(se.Guardian),
-		"financial_aid": cause.Optional(se.FinancialAid),
-		"transcripts":   cause.Optional(se.Transcripts),
+		"personal_info": cause.Required(se.PersonalInfo).Err(),
+		"academic_info": cause.Required(se.AcademicInfo).Err(),
+		"courses":       cause.Optional(se.Courses).Err(),
+		"guardian":      cause.Optional(se.Guardian).Err(),
+		"financial_aid": cause.Optional(se.FinancialAid).Err(),
+		"transcripts":   cause.Optional(se.Transcripts).Err(),
 
 		"status": cause.Required(se.Status).
-			When(!isValidEnrollmentStatus(se.Status), "invalid enrollment status"),
+			When(!isValidEnrollmentStatus(se.Status), "invalid enrollment status").Err(),
 
 		"enrollment_date": cause.Required(se.EnrollmentDate).
 			When(se.EnrollmentDate.After(time.Now()), "enrollment date cannot be in the future").
-			When(se.EnrollmentDate.Before(time.Date(1950, 1, 1, 0, 0, 0, 0, time.UTC)), "enrollment date too old"),
+			When(se.EnrollmentDate.Before(time.Date(1950, 1, 1, 0, 0, 0, 0, time.UTC)), "enrollment date too old").Err(),
 	}.Err()
 }
 
@@ -131,220 +131,322 @@ func (sp *StudentProfile) Validate() error {
 	age := getAge(sp.DateOfBirth)
 	return cause.Map{
 		"first_name": cause.Required(sp.FirstName).
-			When(len(sp.FirstName) < 1, "first name is required").
-			When(len(sp.FirstName) > 50, "first name too long").
-			When(containsNumbers(sp.FirstName), "first name cannot contain numbers"),
+			Select(map[string]bool{
+				"first name is required":            len(sp.FirstName) < 1,
+				"first name too long":               len(sp.FirstName) > 50,
+				"first name cannot contain numbers": containsNumbers(sp.FirstName),
+			}),
 
 		"last_name": cause.Required(sp.LastName).
-			When(len(sp.LastName) < 1, "last name is required").
-			When(len(sp.LastName) > 50, "last name too long").
-			When(containsNumbers(sp.LastName), "last name cannot contain numbers"),
+			Select(map[string]bool{
+				"last name is required":            len(sp.LastName) < 1,
+				"last name too long":               len(sp.LastName) > 50,
+				"last name cannot contain numbers": containsNumbers(sp.LastName),
+			}),
 
 		"middle_name": cause.Optional(sp.MiddleName).
-			When(len(sp.MiddleName) > 50, "middle name too long").
-			When(containsNumbers(sp.MiddleName), "middle name cannot contain numbers"),
+			Select(map[string]bool{
+				"middle name too long":               len(sp.MiddleName) > 50,
+				"middle name cannot contain numbers": containsNumbers(sp.MiddleName),
+			}),
 
 		"date_of_birth": cause.Required(sp.DateOfBirth).
-			When(sp.DateOfBirth.After(time.Now()), "date of birth cannot be in the future").
-			When(age < 5, "student too young").
-			When(age > 120, "invalid date of birth"),
+			Select(map[string]bool{
+				"date of birth cannot be in the future": sp.DateOfBirth.After(time.Now()),
+				"student too young":                     age < 5,
+				"invalid date of birth":                 age > 120,
+			}),
 
 		"gender": cause.Required(sp.Gender).
-			When(!isValidGender(sp.Gender), "invalid gender value"),
+			Select(map[string]bool{
+				"invalid gender value": !isValidGender(sp.Gender),
+			}),
 
 		"nationality": cause.Required(sp.Nationality).
-			When(len(sp.Nationality) < 2, "nationality too short").
-			When(len(sp.Nationality) > 50, "nationality too long"),
+			Select(map[string]bool{
+				"nationality too short": len(sp.Nationality) < 2,
+				"nationality too long":  len(sp.Nationality) > 50,
+			}),
 
 		"email": cause.Required(sp.Email).
-			When(!isValidEmail(sp.Email), "invalid email format").
-			When(!isEducationalEmail(sp.Email), "non-educational email domain"),
+			Select(map[string]bool{
+				"invalid email format":         !isValidEmail(sp.Email),
+				"non-educational email domain": !isEducationalEmail(sp.Email),
+			}),
 
 		"phone_number": cause.Required(sp.PhoneNumber).
-			When(!isValidPhoneNumber(sp.PhoneNumber), "invalid phone number format"),
+			Select(map[string]bool{
+				"invalid phone number format": !isValidPhoneNumber(sp.PhoneNumber),
+			}),
 
-		"address":           cause.Required(sp.Address),
-		"emergency_contact": cause.Required(sp.EmergencyContact),
+		"address":           cause.Required(sp.Address).Err(),
+		"emergency_contact": cause.Required(sp.EmergencyContact).Err(),
 	}.Err()
 }
 
 func (ap *AcademicProfile) Validate() error {
 	return cause.Map{
 		"program": cause.Required(ap.Program).
-			When(!isValidProgram(ap.Program), "invalid program").
-			When(len(ap.Program) > 100, "program name too long"),
+			Select(map[string]bool{
+				"invalid program":       !isValidProgram(ap.Program),
+				"program name too long": len(ap.Program) > 100,
+			}),
 
 		"major": cause.Required(ap.Major).
-			When(!isValidMajor(ap.Major), "invalid major").
-			When(len(ap.Major) > 100, "major name too long"),
+			Select(map[string]bool{
+				"invalid major":       !isValidMajor(ap.Major),
+				"major name too long": len(ap.Major) > 100,
+			}),
 
 		"minor": cause.Optional(ap.Minor).
-			When(!isValidMajor(ap.Minor), "invalid minor").
-			When(len(ap.Minor) > 100, "minor name too long").
-			When(ap.Minor == ap.Major, "minor cannot be the same as major"),
+			Select(map[string]bool{
+				"invalid minor":                     !isValidMajor(ap.Minor),
+				"minor name too long":               len(ap.Minor) > 100,
+				"minor cannot be the same as major": ap.Minor == ap.Major,
+			}),
 
 		"year": cause.Required(ap.Year).
-			When(ap.Year < 1 || ap.Year > 8, "academic year must be between 1 and 8"),
+			Select(map[string]bool{
+				"academic year must be between 1 and 8": ap.Year < 1 || ap.Year > 8,
+			}),
 
 		"semester": cause.Required(ap.Semester).
-			When(!isValidSemester(ap.Semester), "invalid semester"),
+			Select(map[string]bool{
+				"invalid semester": !isValidSemester(ap.Semester),
+			}),
 
 		"credits": cause.Required(ap.Credits).
-			When(ap.Credits < 0, "credits cannot be negative").
-			When(ap.Credits > 200, "credits exceeds maximum allowed"),
+			Select(map[string]bool{
+				"credits cannot be negative":      ap.Credits < 0,
+				"credits exceeds maximum allowed": ap.Credits > 200,
+			}),
 
 		"gpa": cause.Required(ap.GPA).
-			When(ap.GPA < 0.0 || ap.GPA > 4.0, "GPA must be between 0.0 and 4.0"),
+			Select(map[string]bool{
+				"GPA must be between 0.0 and 4.0": ap.GPA < 0.0 || ap.GPA > 4.0,
+			}),
 
 		"expected_graduation": cause.Required(ap.ExpectedGraduation).
-			When(ap.ExpectedGraduation.Before(time.Now()), "expected graduation cannot be in the past").
-			When(ap.ExpectedGraduation.After(time.Now().AddDate(10, 0, 0)), "expected graduation too far in future"),
+			Select(map[string]bool{
+				"expected graduation cannot be in the past": ap.ExpectedGraduation.Before(time.Now()),
+				"expected graduation too far in future":     ap.ExpectedGraduation.After(time.Now().AddDate(10, 0, 0)),
+			}),
 
 		"advisor_id": cause.Required(ap.AdvisorID).
-			When(!isValidFacultyID(ap.AdvisorID), "invalid advisor ID"),
+			Select(map[string]bool{
+				"invalid advisor ID": !isValidFacultyID(ap.AdvisorID),
+			}),
 
 		"degree_type": cause.Required(ap.DegreeType).
-			When(!isValidDegreeType(ap.DegreeType), "invalid degree type"),
+			Select(map[string]bool{
+				"invalid degree type": !isValidDegreeType(ap.DegreeType),
+			}),
 	}.Err()
 }
 
 func (ce *CourseEnrollment) Validate() error {
 	return cause.Map{
 		"course_id": cause.Required(ce.CourseID).
-			When(!isValidCourseID(ce.CourseID), "invalid course ID format").
-			When(len(ce.CourseID) > 15, "course ID too long"),
+			Select(map[string]bool{
+				"invalid course ID format": !isValidCourseID(ce.CourseID),
+				"course ID too long":       len(ce.CourseID) > 15,
+			}),
 
 		"course_name": cause.Required(ce.CourseName).
-			When(len(ce.CourseName) < 3, "course name too short").
-			When(len(ce.CourseName) > 100, "course name too long"),
+			Select(map[string]bool{
+				"course name too short": len(ce.CourseName) < 3,
+				"course name too long":  len(ce.CourseName) > 100,
+			}),
 
 		"credits": cause.Required(ce.Credits).
-			When(ce.Credits < 0, "credits cannot be negative").
-			When(ce.Credits > 10, "credits exceeds maximum for a single course"),
+			Select(map[string]bool{
+				"credits cannot be negative":                  ce.Credits < 0,
+				"credits exceeds maximum for a single course": ce.Credits > 10,
+			}),
 
 		"instructor_id": cause.Required(ce.InstructorID).
-			When(!isValidFacultyID(ce.InstructorID), "invalid instructor ID"),
+			Select(map[string]bool{
+				"invalid instructor ID": !isValidFacultyID(ce.InstructorID),
+			}),
 
-		"schedule": cause.Required(ce.Schedule),
+		"schedule": cause.Required(ce.Schedule).Err(),
 
 		"enroll_date": cause.Required(ce.EnrollDate).
-			When(ce.EnrollDate.After(time.Now()), "enrollment date cannot be in the future").
-			When(ce.EnrollDate.Before(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)), "enrollment date too old"),
+			Select(map[string]bool{
+				"enrollment date cannot be in the future": ce.EnrollDate.After(time.Now()),
+				"enrollment date too old":                 ce.EnrollDate.Before(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)),
+			}),
 
 		"grade": cause.Optional(ce.Grade).
-			When(!isValidGrade(ce.Grade), "invalid grade"),
+			Select(map[string]bool{
+				"invalid grade": !isValidGrade(ce.Grade),
+			}),
 
 		"status": cause.Required(ce.Status).
-			When(!isValidCourseStatus(ce.Status), "invalid course status"),
+			Select(map[string]bool{
+				"invalid course status": !isValidCourseStatus(ce.Status),
+			}),
 
 		"prerequisites": cause.Optional(ce.Prerequisites).
-			When(len(ce.Prerequisites) > 10, "too many prerequisites listed"),
+			Select(map[string]bool{
+				"too many prerequisites listed": len(ce.Prerequisites) > 10,
+			}),
 	}.Err()
 }
 
 func (s *Schedule) Validate() error {
 	return cause.Map{
 		"days_of_week": cause.Required(s.DaysOfWeek).
-			When(len(s.DaysOfWeek) == 0, "at least one day of week required").
-			When(len(s.DaysOfWeek) > 7, "cannot have more than 7 days").
-			When(!areValidDays(s.DaysOfWeek), "invalid days of week"),
+			Select(map[string]bool{
+				"at least one day of week required": len(s.DaysOfWeek) == 0,
+				"cannot have more than 7 days":      len(s.DaysOfWeek) > 7,
+				"invalid days of week":              !areValidDays(s.DaysOfWeek),
+			}),
 
 		"start_time": cause.Required(s.StartTime).
-			When(!isValidTime(s.StartTime), "invalid start time format").
-			When(!isValidClassTime(s.StartTime), "start time outside class hours"),
+			Select(map[string]bool{
+				"invalid start time format":      !isValidTime(s.StartTime),
+				"start time outside class hours": !isValidClassTime(s.StartTime),
+			}),
 
 		"end_time": cause.Required(s.EndTime).
-			When(!isValidTime(s.EndTime), "invalid end time format").
-			When(!isValidClassTime(s.EndTime), "end time outside class hours").
-			When(!isEndTimeAfterStart(s.StartTime, s.EndTime), "end time must be after start time"),
+			Select(map[string]bool{
+				"invalid end time format":           !isValidTime(s.EndTime),
+				"end time outside class hours":      !isValidClassTime(s.EndTime),
+				"end time must be after start time": !isEndTimeAfterStart(s.StartTime, s.EndTime),
+			}),
 
 		"room": cause.Required(s.Room).
-			When(!isValidRoomNumber(s.Room), "invalid room number format").
-			When(len(s.Room) > 20, "room number too long"),
+			Select(map[string]bool{
+				"invalid room number format": !isValidRoomNumber(s.Room),
+				"room number too long":       len(s.Room) > 20,
+			}),
 
 		"building": cause.Required(s.Building).
-			When(len(s.Building) < 1, "building name required").
-			When(len(s.Building) > 50, "building name too long"),
+			Select(map[string]bool{
+				"building name required": len(s.Building) < 1,
+				"building name too long": len(s.Building) > 50,
+			}),
 	}.Err()
 }
 
 func (gi *GuardianInfo) Validate() error {
 	return cause.Map{
 		"name": cause.Required(gi.Name).
-			When(len(gi.Name) < 2, "guardian name too short").
-			When(len(gi.Name) > 100, "guardian name too long"),
+			Select(map[string]bool{
+				"guardian name too short": len(gi.Name) < 2,
+				"guardian name too long":  len(gi.Name) > 100,
+			}),
 
 		"relationship": cause.Required(gi.Relationship).
-			When(!isValidGuardianRelationship(gi.Relationship), "invalid guardian relationship"),
+			Select(map[string]bool{
+				"invalid guardian relationship": !isValidGuardianRelationship(gi.Relationship),
+			}),
 
 		"phone": cause.Required(gi.Phone).
-			When(!isValidPhoneNumber(gi.Phone), "invalid guardian phone number"),
+			Select(map[string]bool{
+				"invalid guardian phone number": !isValidPhoneNumber(gi.Phone),
+			}),
 
 		"email": cause.Optional(gi.Email).
-			When(!isValidEmail(gi.Email), "invalid guardian email"),
+			Select(map[string]bool{
+				"invalid guardian email": !isValidEmail(gi.Email),
+			}),
 
-		"address": cause.Required(gi.Address),
+		"address": cause.Required(gi.Address).Err(),
 	}.Err()
 }
 
 func (fa *FinancialAid) Validate() error {
 	return cause.Map{
 		"type": cause.Required(fa.Type).
-			When(!isValidFinancialAidType(fa.Type), "invalid financial aid type"),
+			Select(map[string]bool{
+				"invalid financial aid type": !isValidFinancialAidType(fa.Type),
+			}),
 
 		"amount": cause.Required(fa.Amount).
-			When(fa.Amount <= 0, "financial aid amount must be positive").
-			When(fa.Amount > 100000, "financial aid amount exceeds maximum"),
+			Select(map[string]bool{
+				"financial aid amount must be positive": fa.Amount <= 0,
+				"financial aid amount exceeds maximum":  fa.Amount > 100000,
+			}),
 
 		"semester": cause.Required(fa.Semester).
-			When(!isValidSemester(fa.Semester), "invalid semester"),
+			Select(map[string]bool{
+				"invalid semester": !isValidSemester(fa.Semester),
+			}),
 
 		"academic_year": cause.Required(fa.AcademicYear).
-			When(!isValidAcademicYear(fa.AcademicYear), "invalid academic year format"),
+			Select(map[string]bool{
+				"invalid academic year format": !isValidAcademicYear(fa.AcademicYear),
+			}),
 
 		"requirements": cause.Optional(fa.Requirements).
-			When(len(fa.Requirements) > 20, "too many requirements listed"),
+			Select(map[string]bool{
+				"too many requirements listed": len(fa.Requirements) > 20,
+			}),
 
 		"status": cause.Required(fa.Status).
-			When(!isValidFinancialAidStatus(fa.Status), "invalid financial aid status"),
+			Select(map[string]bool{
+				"invalid financial aid status": !isValidFinancialAidStatus(fa.Status),
+			}),
 
 		"application_date": cause.Required(fa.ApplicationDate).
-			When(fa.ApplicationDate.After(time.Now()), "application date cannot be in the future").
-			When(fa.ApplicationDate.Before(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)), "application date too old"),
+			Select(map[string]bool{
+				"application date cannot be in the future": fa.ApplicationDate.After(time.Now()),
+				"application date too old":                 fa.ApplicationDate.Before(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)),
+			}),
 
 		"expiry_date": cause.Required(fa.ExpiryDate).
-			When(fa.ExpiryDate.Before(fa.ApplicationDate), "expiry date cannot be before application date").
-			When(fa.ExpiryDate.After(time.Now().AddDate(5, 0, 0)), "expiry date too far in future"),
+			Select(map[string]bool{
+				"expiry date cannot be before application date": fa.ExpiryDate.Before(fa.ApplicationDate),
+				"expiry date too far in future":                 fa.ExpiryDate.After(time.Now().AddDate(5, 0, 0)),
+			}),
 	}.Err()
 }
 
 func (t *Transcript) Validate() error {
 	return cause.Map{
 		"course_id": cause.Required(t.CourseID).
-			When(!isValidCourseID(t.CourseID), "invalid course ID"),
+			Select(map[string]bool{
+				"invalid course ID": !isValidCourseID(t.CourseID),
+			}),
 
 		"course_name": cause.Required(t.CourseName).
-			When(len(t.CourseName) < 3, "course name too short").
-			When(len(t.CourseName) > 100, "course name too long"),
+			Select(map[string]bool{
+				"course name too short": len(t.CourseName) < 3,
+				"course name too long":  len(t.CourseName) > 100,
+			}),
 
 		"credits": cause.Required(t.Credits).
-			When(t.Credits < 0, "credits cannot be negative").
-			When(t.Credits > 10, "credits exceeds maximum"),
+			Select(map[string]bool{
+				"credits cannot be negative": t.Credits < 0,
+				"credits exceeds maximum":    t.Credits > 10,
+			}),
 
 		"grade": cause.Required(t.Grade).
-			When(!isValidGrade(t.Grade), "invalid grade"),
+			Select(map[string]bool{
+				"invalid grade": !isValidGrade(t.Grade),
+			}),
 
 		"grade_points": cause.Required(t.GradePoints).
-			When(t.GradePoints < 0.0 || t.GradePoints > 4.0, "grade points must be between 0.0 and 4.0"),
+			Select(map[string]bool{
+				"grade points must be between 0.0 and 4.0": t.GradePoints < 0.0 || t.GradePoints > 4.0,
+			}),
 
 		"semester": cause.Required(t.Semester).
-			When(!isValidSemester(t.Semester), "invalid semester"),
+			Select(map[string]bool{
+				"invalid semester": !isValidSemester(t.Semester),
+			}),
 
 		"academic_year": cause.Required(t.AcademicYear).
-			When(!isValidAcademicYear(t.AcademicYear), "invalid academic year"),
+			Select(map[string]bool{
+				"invalid academic year": !isValidAcademicYear(t.AcademicYear),
+			}),
 
 		"instructor_id": cause.Required(t.InstructorID).
-			When(!isValidFacultyID(t.InstructorID), "invalid instructor ID"),
+			Select(map[string]bool{
+				"invalid instructor ID": !isValidFacultyID(t.InstructorID),
+			}),
 	}.Err()
 }
 

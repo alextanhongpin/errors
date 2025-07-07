@@ -23,36 +23,52 @@ type TransferRequest struct {
 func (tr *TransferRequest) Validate() error {
 	return cause.Map{
 		"from_account_id": cause.Required(tr.FromAccountID).
-			When(!isValidAccountID(tr.FromAccountID), "invalid from account ID format").
-			When(tr.FromAccountID == tr.ToAccountID, "cannot transfer to same account"),
+			Select(map[string]bool{
+				"invalid from account ID format":  !isValidAccountID(tr.FromAccountID),
+				"cannot transfer to same account": tr.FromAccountID == tr.ToAccountID,
+			}),
 
 		"to_account_id": cause.Required(tr.ToAccountID).
-			When(!isValidAccountID(tr.ToAccountID), "invalid to account ID format"),
+			Select(map[string]bool{
+				"invalid to account ID format": !isValidAccountID(tr.ToAccountID),
+			}),
 
 		"amount": cause.Required(tr.Amount).
-			When(tr.Amount <= 0, "amount must be positive").
-			When(tr.Amount > 1000000, "amount exceeds transfer limit").
-			When(!hasValidDecimalPlaces(tr.Amount), "amount has too many decimal places"),
+			Select(map[string]bool{
+				"amount must be positive":            tr.Amount <= 0,
+				"amount exceeds transfer limit":      tr.Amount > 1000000,
+				"amount has too many decimal places": !hasValidDecimalPlaces(tr.Amount),
+			}),
 
 		"currency": cause.Required(tr.Currency).
-			When(!isValidCurrencyCode(tr.Currency), "invalid currency code").
-			When(!isSupportedCurrency(tr.Currency), "currency not supported"),
+			Select(map[string]bool{
+				"invalid currency code":  !isValidCurrencyCode(tr.Currency),
+				"currency not supported": !isSupportedCurrency(tr.Currency),
+			}),
 
 		"reference": cause.Required(tr.Reference).
-			When(len(tr.Reference) < 3, "reference too short").
-			When(len(tr.Reference) > 50, "reference too long").
-			When(!isAlphaNumeric(tr.Reference), "reference must be alphanumeric"),
+			Select(map[string]bool{
+				"reference too short":            len(tr.Reference) < 3,
+				"reference too long":             len(tr.Reference) > 50,
+				"reference must be alphanumeric": !isAlphaNumeric(tr.Reference),
+			}),
 
 		"description": cause.Optional(tr.Description).
-			When(len(tr.Description) > 200, "description too long"),
+			Select(map[string]bool{
+				"description too long": len(tr.Description) > 200,
+			}),
 
 		"scheduled_date": cause.Optional(tr.ScheduledDate).
-			When(tr.ScheduledDate != nil && tr.ScheduledDate.Before(time.Now()), "scheduled date cannot be in the past").
-			When(tr.ScheduledDate != nil && tr.ScheduledDate.After(time.Now().AddDate(1, 0, 0)), "scheduled date too far in future"),
+			Select(map[string]bool{
+				"scheduled date cannot be in the past": tr.ScheduledDate != nil && tr.ScheduledDate.Before(time.Now()),
+				"scheduled date too far in future":     tr.ScheduledDate != nil && tr.ScheduledDate.After(time.Now().AddDate(1, 0, 0)),
+			}),
 
 		"metadata": cause.Optional(tr.Metadata).
-			When(len(tr.Metadata) > 10, "too many metadata entries").
-			When(hasInvalidMetadata(tr.Metadata), "metadata contains invalid keys or values"),
+			Select(map[string]bool{
+				"too many metadata entries":                len(tr.Metadata) > 10,
+				"metadata contains invalid keys or values": hasInvalidMetadata(tr.Metadata),
+			}),
 	}.Err()
 }
 
@@ -83,34 +99,34 @@ func (bp *BlogPost) Validate() error {
 		"title": cause.Required(bp.Title).
 			When(len(bp.Title) < 5, "title too short").
 			When(len(bp.Title) > 100, "title too long").
-			When(hasRepeatedWords(bp.Title), "title contains repeated words"),
+			When(hasRepeatedWords(bp.Title), "title contains repeated words").Err(),
 
 		"content": cause.Required(bp.Content).
 			When(len(bp.Content) < 100, "content too short for publication").
 			When(len(bp.Content) > 50000, "content exceeds maximum length").
-			When(hasProhibitedContent(bp.Content), "content contains prohibited material"),
+			When(hasProhibitedContent(bp.Content), "content contains prohibited material").Err(),
 
 		"author_id": cause.Required(bp.AuthorID).
-			When(!isValidUserID(bp.AuthorID), "invalid author ID"),
+			When(!isValidUserID(bp.AuthorID), "invalid author ID").Err(),
 
 		"categories": cause.Required(bp.Categories).
 			When(len(bp.Categories) == 0, "at least one category required").
 			When(len(bp.Categories) > 5, "too many categories").
-			When(hasInvalidCategories(bp.Categories), "contains invalid categories"),
+			When(hasInvalidCategories(bp.Categories), "contains invalid categories").Err(),
 
 		"tags": cause.Optional(bp.Tags).
 			When(len(bp.Tags) > 20, "too many tags").
 			When(hasDuplicates(bp.Tags), "duplicate tags not allowed").
-			When(hasInvalidTags(bp.Tags), "contains invalid tags"),
+			When(hasInvalidTags(bp.Tags), "contains invalid tags").Err(),
 
 		"publish_date": cause.Required(bp.PublishDate).
 			When(bp.Status == "published" && bp.PublishDate.After(time.Now()), "cannot publish in future").
-			When(bp.PublishDate.Before(time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)), "publish date too old"),
+			When(bp.PublishDate.Before(time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)), "publish date too old").Err(),
 
 		"status": cause.Required(bp.Status).
-			When(!isValidPostStatus(bp.Status), "invalid post status"),
+			When(!isValidPostStatus(bp.Status), "invalid post status").Err(),
 
-		"seo_data": cause.Required(bp.SEOData),
+		"seo_data": cause.Required(bp.SEOData).Err(),
 	}.Err()
 }
 
@@ -118,21 +134,21 @@ func (seo *SEOData) Validate() error {
 	return cause.Map{
 		"meta_title": cause.Required(seo.MetaTitle).
 			When(len(seo.MetaTitle) < 10, "meta title too short").
-			When(len(seo.MetaTitle) > 60, "meta title too long for SEO"),
+			When(len(seo.MetaTitle) > 60, "meta title too long for SEO").Err(),
 
 		"meta_description": cause.Required(seo.MetaDescription).
 			When(len(seo.MetaDescription) < 50, "meta description too short").
-			When(len(seo.MetaDescription) > 160, "meta description too long for SEO"),
+			When(len(seo.MetaDescription) > 160, "meta description too long for SEO").Err(),
 
 		"keywords": cause.Optional(seo.Keywords).
 			When(len(seo.Keywords) > 10, "too many keywords").
-			When(hasDuplicates(seo.Keywords), "duplicate keywords"),
+			When(hasDuplicates(seo.Keywords), "duplicate keywords").Err(),
 
 		"canonical_url": cause.Optional(seo.CanonicalURL).
-			When(!isValidURL(seo.CanonicalURL), "invalid canonical URL"),
+			When(!isValidURL(seo.CanonicalURL), "invalid canonical URL").Err(),
 
 		"og_image": cause.Optional(seo.OpenGraphImage).
-			When(!isValidImageURL(seo.OpenGraphImage), "invalid Open Graph image URL"),
+			When(!isValidImageURL(seo.OpenGraphImage), "invalid Open Graph image URL").Err(),
 	}.Err()
 }
 
@@ -178,32 +194,32 @@ func (er *EventRegistration) Validate() error {
 	return cause.Map{
 		"event_id": cause.Required(er.EventID).
 			When(!isValidEventID(er.EventID), "invalid event ID").
-			When(!isEventOpen(er.EventID), "event registration is closed"),
+			When(!isEventOpen(er.EventID), "event registration is closed").Err(),
 
-		"attendee_info": cause.Required(er.AttendeeInfo),
+		"attendee_info": cause.Required(er.AttendeeInfo).Err(),
 
 		"ticket_type": cause.Required(er.TicketType).
-			When(!isValidTicketType(er.EventID, er.TicketType), "invalid ticket type for event"),
+			When(!isValidTicketType(er.EventID, er.TicketType), "invalid ticket type for event").Err(),
 
 		"quantity": cause.Required(er.Quantity).
 			When(er.Quantity <= 0, "quantity must be positive").
 			When(er.Quantity > getMaxTicketsPerRegistration(er.EventID), "exceeds maximum tickets per registration").
-			When(!isTicketAvailable(er.EventID, er.TicketType, er.Quantity), "not enough tickets available"),
+			When(!isTicketAvailable(er.EventID, er.TicketType, er.Quantity), "not enough tickets available").Err(),
 
-		"payment_info": cause.Required(er.PaymentInfo),
+		"payment_info": cause.Required(er.PaymentInfo).Err(),
 
 		"dietary_requirements": cause.Optional(er.DietaryReqs).
 			When(len(er.DietaryReqs) > 10, "too many dietary requirements").
-			When(hasInvalidDietaryReqs(er.DietaryReqs), "contains invalid dietary requirements"),
+			When(hasInvalidDietaryReqs(er.DietaryReqs), "contains invalid dietary requirements").Err(),
 
 		"accessibility_needs": cause.Optional(er.Accessibility).
 			When(len(er.Accessibility) > 10, "too many accessibility needs").
-			When(hasInvalidAccessibilityNeeds(er.Accessibility), "contains invalid accessibility needs"),
+			When(hasInvalidAccessibilityNeeds(er.Accessibility), "contains invalid accessibility needs").Err(),
 
-		"emergency_contact": cause.Required(er.EmergencyContact),
+		"emergency_contact": cause.Required(er.EmergencyContact).Err(),
 
 		"custom_fields": cause.Optional(er.CustomFields).
-			When(!validateCustomFields(er.EventID, er.CustomFields), "invalid custom field values"),
+			When(!validateCustomFields(er.EventID, er.CustomFields), "invalid custom field values").Err(),
 	}.Err()
 }
 
@@ -212,49 +228,49 @@ func (ai *AttendeeInfo) Validate() error {
 		"first_name": cause.Required(ai.FirstName).
 			When(len(ai.FirstName) < 2, "first name too short").
 			When(len(ai.FirstName) > 50, "first name too long").
-			When(containsNumbers(ai.FirstName), "first name cannot contain numbers"),
+			When(containsNumbers(ai.FirstName), "first name cannot contain numbers").Err(),
 
 		"last_name": cause.Required(ai.LastName).
 			When(len(ai.LastName) < 2, "last name too short").
 			When(len(ai.LastName) > 50, "last name too long").
-			When(containsNumbers(ai.LastName), "last name cannot contain numbers"),
+			When(containsNumbers(ai.LastName), "last name cannot contain numbers").Err(),
 
 		"email": cause.Required(ai.Email).
 			When(!isValidEmail(ai.Email), "invalid email format").
-			When(isDisposableEmail(ai.Email), "disposable emails not allowed"),
+			When(isDisposableEmail(ai.Email), "disposable emails not allowed").Err(),
 
 		"phone": cause.Required(ai.Phone).
-			When(!isValidPhoneNumber(ai.Phone), "invalid phone number"),
+			When(!isValidPhoneNumber(ai.Phone), "invalid phone number").Err(),
 
 		"company": cause.Optional(ai.Company).
-			When(len(ai.Company) > 100, "company name too long"),
+			When(len(ai.Company) > 100, "company name too long").Err(),
 
 		"job_title": cause.Optional(ai.JobTitle).
-			When(len(ai.JobTitle) > 100, "job title too long"),
+			When(len(ai.JobTitle) > 100, "job title too long").Err(),
 
 		"date_of_birth": cause.Optional(ai.DateOfBirth).
 			When(!ai.DateOfBirth.IsZero() && getAge(ai.DateOfBirth) < 18, "must be at least 18 years old").
-			When(!ai.DateOfBirth.IsZero() && ai.DateOfBirth.After(time.Now()), "date of birth cannot be in future"),
+			When(!ai.DateOfBirth.IsZero() && ai.DateOfBirth.After(time.Now()), "date of birth cannot be in future").Err(),
 	}.Err()
 }
 
 func (pi *PaymentInfo) Validate() error {
 	return cause.Map{
 		"method": cause.Required(pi.Method).
-			When(!isValidPaymentMethod(pi.Method), "invalid payment method"),
+			When(!isValidPaymentMethod(pi.Method), "invalid payment method").Err(),
 
 		"amount": cause.Required(pi.Amount).
 			When(pi.Amount <= 0, "amount must be positive").
-			When(!hasValidDecimalPlaces(pi.Amount), "amount has too many decimal places"),
+			When(!hasValidDecimalPlaces(pi.Amount), "amount has too many decimal places").Err(),
 
 		"currency": cause.Required(pi.Currency).
-			When(!isValidCurrencyCode(pi.Currency), "invalid currency code"),
+			When(!isValidCurrencyCode(pi.Currency), "invalid currency code").Err(),
 
 		"promo_code": cause.Optional(pi.PromoCode).
 			When(!isValidPromoCode(pi.PromoCode), "invalid promo code format").
-			When(!isPromoCodeActive(pi.PromoCode), "promo code is expired or inactive"),
+			When(!isPromoCodeActive(pi.PromoCode), "promo code is expired or inactive").Err(),
 
-		"billing_address": cause.Required(pi.BillingAddress),
+		"billing_address": cause.Required(pi.BillingAddress).Err(),
 	}.Err()
 }
 
@@ -262,16 +278,16 @@ func (ec *EmergencyContact) Validate() error {
 	return cause.Map{
 		"name": cause.Required(ec.Name).
 			When(len(ec.Name) < 2, "emergency contact name too short").
-			When(len(ec.Name) > 100, "emergency contact name too long"),
+			When(len(ec.Name) > 100, "emergency contact name too long").Err(),
 
 		"relationship": cause.Required(ec.Relationship).
-			When(!isValidRelationship(ec.Relationship), "invalid relationship type"),
+			When(!isValidRelationship(ec.Relationship), "invalid relationship type").Err(),
 
 		"phone": cause.Required(ec.Phone).
-			When(!isValidPhoneNumber(ec.Phone), "invalid emergency contact phone number"),
+			When(!isValidPhoneNumber(ec.Phone), "invalid emergency contact phone number").Err(),
 
 		"email": cause.Optional(ec.Email).
-			When(!isValidEmail(ec.Email), "invalid emergency contact email"),
+			When(!isValidEmail(ec.Email), "invalid emergency contact email").Err(),
 	}.Err()
 }
 

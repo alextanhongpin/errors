@@ -17,9 +17,9 @@ type Author struct {
 
 func (a *Author) Validate() error {
 	return cause.Map{
-		"name":  cause.Required(a.Name),
-		"books": cause.Required(a.Books),
-		"likes": cause.Optional(cause.SliceFunc(a.Likes, validateLike)),
+		"name":  cause.Required(a.Name).Err(),
+		"books": cause.Required(a.Books).Err(),
+		"likes": cause.Optional(cause.SliceFunc(a.Likes, validateLike)).Err(),
 	}.Err()
 }
 
@@ -43,9 +43,9 @@ type Book struct {
 
 func (b *Book) Validate() error {
 	return cause.Map{
-		"title":     cause.Required(b.Title),
-		"year":      cause.Optional(b.Year).When(b.Year < 2000, "too old"),
-		"languages": cause.Optional(len(b.Languages)).When(len(b.Languages) > 1, "does not support multilingual"),
+		"title":     cause.Required(b.Title).Err(),
+		"year":      cause.Optional(b.Year).When(b.Year < 2000, "too old").Err(),
+		"languages": cause.Optional(len(b.Languages)).When(len(b.Languages) > 1, "does not support multilingual").Err(),
 	}.Err()
 }
 

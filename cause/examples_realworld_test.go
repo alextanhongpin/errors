@@ -2,7 +2,6 @@ package cause_test
 
 import (
 	"fmt"
-	"net/mail"
 	"regexp"
 	"strings"
 	"time"
@@ -24,22 +23,22 @@ func (a *Address) Validate() error {
 	return cause.Map{
 		"street": cause.Required(a.Street).
 			When(len(a.Street) < 5, "street address too short").
-			When(len(a.Street) > 100, "street address too long"),
+			When(len(a.Street) > 100, "street address too long").Err(),
 
 		"city": cause.Required(a.City).
 			When(len(a.City) < 2, "city name too short").
 			When(len(a.City) > 50, "city name too long").
-			When(containsNumbers(a.City), "city name cannot contain numbers"),
+			When(containsNumbers(a.City), "city name cannot contain numbers").Err(),
 
 		"state": cause.Optional(a.State).
 			When(a.Country == "US" && len(a.State) != 2, "US state must be 2 characters").
-			When(len(a.State) > 50, "state name too long"),
+			When(len(a.State) > 50, "state name too long").Err(),
 
 		"country": cause.Required(a.Country).
-			When(!isValidCountryCode(a.Country), "invalid country code"),
+			When(!isValidCountryCode(a.Country), "invalid country code").Err(),
 
 		"zip_code": cause.Required(a.ZipCode).
-			When(!isValidZipCodeForCountry(a.ZipCode, a.Country), "invalid zip code for country"),
+			When(!isValidZipCodeForCountry(a.ZipCode, a.Country), "invalid zip code for country").Err(),
 	}.Err()
 }
 
@@ -60,41 +59,57 @@ type UserRegistration struct {
 func (u *UserRegistration) Validate() error {
 	return cause.Map{
 		"email": cause.Required(u.Email).
-			When(!isValidEmail(u.Email), "invalid email format").
-			When(isDisposableEmail(u.Email), "disposable emails not allowed"),
+			Select(map[string]bool{
+				"invalid email format":          !isValidEmail(u.Email),
+				"disposable emails not allowed": isDisposableEmail(u.Email),
+			}),
 
 		"password": cause.Required(u.Password).
-			When(len(u.Password) < 8, "password must be at least 8 characters").
-			When(!hasUppercase(u.Password), "password must contain uppercase letter").
-			When(!hasLowercase(u.Password), "password must contain lowercase letter").
-			When(!hasDigit(u.Password), "password must contain digit").
-			When(!hasSpecialChar(u.Password), "password must contain special character"),
+			Select(map[string]bool{
+				"password must be at least 8 characters":  len(u.Password) < 8,
+				"password must contain uppercase letter":  !hasUppercase(u.Password),
+				"password must contain lowercase letter":  !hasLowercase(u.Password),
+				"password must contain digit":             !hasDigit(u.Password),
+				"password must contain special character": !hasSpecialChar(u.Password),
+			}),
 
 		"confirm_password": cause.Required(u.ConfirmPassword).
-			When(u.Password != u.ConfirmPassword, "passwords do not match"),
+			Select(map[string]bool{
+				"passwords do not match": u.Password != u.ConfirmPassword,
+			}),
 
 		"first_name": cause.Required(u.FirstName).
-			When(len(u.FirstName) < 2, "first name too short").
-			When(len(u.FirstName) > 50, "first name too long").
-			When(containsNumbers(u.FirstName), "first name cannot contain numbers"),
+			Select(map[string]bool{
+				"first name too short":              len(u.FirstName) < 2,
+				"first name too long":               len(u.FirstName) > 50,
+				"first name cannot contain numbers": containsNumbers(u.FirstName),
+			}),
 
 		"last_name": cause.Required(u.LastName).
-			When(len(u.LastName) < 2, "last name too short").
-			When(len(u.LastName) > 50, "last name too long").
-			When(containsNumbers(u.LastName), "last name cannot contain numbers"),
+			Select(map[string]bool{
+				"last name too short":              len(u.LastName) < 2,
+				"last name too long":               len(u.LastName) > 50,
+				"last name cannot contain numbers": containsNumbers(u.LastName),
+			}),
 
 		"date_of_birth": cause.Required(u.DateOfBirth).
-			When(u.DateOfBirth.After(time.Now()), "date of birth cannot be in the future").
-			When(getAge(u.DateOfBirth) < 13, "must be at least 13 years old").
-			When(getAge(u.DateOfBirth) > 120, "invalid date of birth"),
+			Select(map[string]bool{
+				"date of birth cannot be in the future": u.DateOfBirth.After(time.Now()),
+				"must be at least 13 years old":         getAge(u.DateOfBirth) < 13,
+				"invalid date of birth":                 getAge(u.DateOfBirth) > 120,
+			}),
 
 		"phone_number": cause.Optional(u.PhoneNumber).
-			When(!isValidPhoneNumber(u.PhoneNumber), "invalid phone number format"),
+			Select(map[string]bool{
+				"invalid phone number format": !isValidPhoneNumber(u.PhoneNumber),
+			}),
 
-		"address": cause.Optional(u.Address),
+		"address": cause.Optional(u.Address).Err(),
 
 		"terms": cause.Required(u.Terms).
-			When(!u.Terms, "must accept terms and conditions"),
+			Select(map[string]bool{
+				"must accept terms and conditions": !u.Terms,
+			}),
 	}.Err()
 }
 
@@ -130,51 +145,51 @@ func (p *Product) Validate() error {
 	return cause.Map{
 		"sku": cause.Required(p.SKU).
 			When(!isValidSKU(p.SKU), "invalid SKU format").
-			When(len(p.SKU) > 20, "SKU too long"),
+			When(len(p.SKU) > 20, "SKU too long").Err(),
 
 		"name": cause.Required(p.Name).
 			When(len(p.Name) < 3, "product name too short").
-			When(len(p.Name) > 100, "product name too long"),
+			When(len(p.Name) > 100, "product name too long").Err(),
 
 		"description": cause.Optional(p.Description).
-			When(len(p.Description) > 1000, "description too long"),
+			When(len(p.Description) > 1000, "description too long").Err(),
 
 		"price": cause.Required(p.Price).
 			When(p.Price <= 0, "price must be positive").
-			When(p.Price > 999999.99, "price too high"),
+			When(p.Price > 999999.99, "price too high").Err(),
 
 		"category": cause.Required(p.Category).
-			When(!isValidCategory(p.Category), "invalid product category"),
+			When(!isValidCategory(p.Category), "invalid product category").Err(),
 
 		"tags": cause.Optional(p.Tags).
 			When(len(p.Tags) > 10, "too many tags").
-			When(hasDuplicateTags(p.Tags), "duplicate tags not allowed"),
+			When(hasDuplicateTags(p.Tags), "duplicate tags not allowed").Err(),
 
 		"variants": cause.Optional(p.Variants).
-			When(len(p.Variants) > 20, "too many variants"),
+			When(len(p.Variants) > 20, "too many variants").Err(),
 
-		"dimensions": cause.Required(p.Dimensions),
+		"dimensions": cause.Required(p.Dimensions).Err(),
 
 		"weight": cause.Required(p.Weight).
 			When(p.Weight <= 0, "weight must be positive").
-			When(p.Weight > 1000, "weight too heavy for shipping"),
+			When(p.Weight > 1000, "weight too heavy for shipping").Err(),
 
 		"stock_count": cause.Optional(p.StockCount).
-			When(p.InStock && p.StockCount <= 0, "stock count must be positive when in stock"),
+			When(p.InStock && p.StockCount <= 0, "stock count must be positive when in stock").Err(),
 	}.Err()
 }
 
 func (v *Variant) Validate() error {
 	return cause.Map{
 		"name": cause.Required(v.Name).
-			When(len(v.Name) > 50, "variant name too long"),
+			When(len(v.Name) > 50, "variant name too long").Err(),
 
 		"value": cause.Required(v.Value).
-			When(len(v.Value) > 100, "variant value too long"),
+			When(len(v.Value) > 100, "variant value too long").Err(),
 
 		"price": cause.Optional(v.Price).
 			When(v.Price < -999.99, "price modifier too low").
-			When(v.Price > 999.99, "price modifier too high"),
+			When(v.Price > 999.99, "price modifier too high").Err(),
 	}.Err()
 }
 
@@ -182,18 +197,18 @@ func (d *Dimensions) Validate() error {
 	return cause.Map{
 		"length": cause.Required(d.Length).
 			When(d.Length <= 0, "length must be positive").
-			When(d.Length > 1000, "length too large"),
+			When(d.Length > 1000, "length too large").Err(),
 
 		"width": cause.Required(d.Width).
 			When(d.Width <= 0, "width must be positive").
-			When(d.Width > 1000, "width too large"),
+			When(d.Width > 1000, "width too large").Err(),
 
 		"height": cause.Required(d.Height).
 			When(d.Height <= 0, "height must be positive").
-			When(d.Height > 1000, "height too large"),
+			When(d.Height > 1000, "height too large").Err(),
 
 		"unit": cause.Required(d.Unit).
-			When(!isValidDimensionUnit(d.Unit), "invalid dimension unit"),
+			When(!isValidDimensionUnit(d.Unit), "invalid dimension unit").Err(),
 	}.Err()
 }
 
@@ -234,65 +249,65 @@ type DeliveryOptions struct {
 func (o *CreateOrderRequest) Validate() error {
 	return cause.Map{
 		"customer_id": cause.Required(o.CustomerID).
-			When(!isValidUUID(o.CustomerID), "invalid customer ID format"),
+			When(!isValidUUID(o.CustomerID), "invalid customer ID format").Err(),
 
 		"items": cause.Required(o.Items).
 			When(len(o.Items) == 0, "order must contain at least one item").
 			When(len(o.Items) > 50, "too many items in order").
-			When(calculateTotalValue(o.Items) > 10000, "order value exceeds limit"),
+			When(calculateTotalValue(o.Items) > 10000, "order value exceeds limit").Err(),
 
-		"shipping_address": cause.Required(o.ShippingAddress),
-		"billing_address":  cause.Optional(o.BillingAddress),
-		"payment_method":   cause.Required(o.PaymentMethod),
+		"shipping_address": cause.Required(o.ShippingAddress).Err(),
+		"billing_address":  cause.Optional(o.BillingAddress).Err(),
+		"payment_method":   cause.Required(o.PaymentMethod).Err(),
 
 		"coupon_code": cause.Optional(o.CouponCode).
-			When(!isValidCouponFormat(o.CouponCode), "invalid coupon code format"),
+			When(!isValidCouponFormat(o.CouponCode), "invalid coupon code format").Err(),
 
-		"delivery_options": cause.Required(o.DeliveryOptions),
+		"delivery_options": cause.Required(o.DeliveryOptions).Err(),
 
 		"special_instructions": cause.Optional(o.SpecialInstructions).
-			When(len(o.SpecialInstructions) > 500, "special instructions too long"),
+			When(len(o.SpecialInstructions) > 500, "special instructions too long").Err(),
 	}.Err()
 }
 
 func (item *OrderItem) Validate() error {
 	return cause.Map{
 		"product_id": cause.Required(item.ProductID).
-			When(!isValidUUID(item.ProductID), "invalid product ID format"),
+			When(!isValidUUID(item.ProductID), "invalid product ID format").Err(),
 
 		"quantity": cause.Required(item.Quantity).
 			When(item.Quantity <= 0, "quantity must be positive").
-			When(item.Quantity > 100, "quantity exceeds maximum allowed"),
+			When(item.Quantity > 100, "quantity exceeds maximum allowed").Err(),
 
 		"price": cause.Required(item.Price).
 			When(item.Price <= 0, "price must be positive").
-			When(item.Price > 9999.99, "price exceeds maximum allowed"),
+			When(item.Price > 9999.99, "price exceeds maximum allowed").Err(),
 
 		"discount": cause.Optional(item.Discount).
 			When(item.Discount < 0, "discount cannot be negative").
-			When(item.Discount >= item.Price, "discount cannot exceed item price"),
+			When(item.Discount >= item.Price, "discount cannot exceed item price").Err(),
 	}.Err()
 }
 
 func (pm *PaymentMethod) Validate() error {
 	baseValidation := cause.Map{
 		"type": cause.Required(pm.Type).
-			When(!isValidPaymentType(pm.Type), "invalid payment method type"),
+			When(!isValidPaymentType(pm.Type), "invalid payment method type").Err(),
 	}
 
 	// Additional validation based on payment type
 	switch pm.Type {
 	case "credit_card", "debit_card":
 		baseValidation["card_number"] = cause.Required(pm.CardNumber).
-			When(!isValidCardNumber(pm.CardNumber), "invalid card number")
+			When(!isValidCardNumber(pm.CardNumber), "invalid card number").Err()
 		baseValidation["expiry_date"] = cause.Required(pm.ExpiryDate).
 			When(!isValidExpiryDate(pm.ExpiryDate), "invalid expiry date").
-			When(isExpired(pm.ExpiryDate), "card has expired")
+			When(isExpired(pm.ExpiryDate), "card has expired").Err()
 		baseValidation["cvv"] = cause.Required(pm.CVV).
-			When(!isValidCVV(pm.CVV), "invalid CVV")
+			When(!isValidCVV(pm.CVV), "invalid CVV").Err()
 	case "paypal":
 		baseValidation["paypal_id"] = cause.Required(pm.PayPalID).
-			When(!isValidEmail(pm.PayPalID), "invalid PayPal email")
+			When(!isValidEmail(pm.PayPalID), "invalid PayPal email").Err()
 	}
 
 	return baseValidation.Err()
@@ -301,17 +316,17 @@ func (pm *PaymentMethod) Validate() error {
 func (do *DeliveryOptions) Validate() error {
 	return cause.Map{
 		"type": cause.Required(do.Type).
-			When(!isValidDeliveryType(do.Type), "invalid delivery type"),
+			When(!isValidDeliveryType(do.Type), "invalid delivery type").Err(),
 
 		"priority": cause.Required(do.Priority).
-			When(!isValidDeliveryPriority(do.Priority), "invalid delivery priority"),
+			When(!isValidDeliveryPriority(do.Priority), "invalid delivery priority").Err(),
 
 		"requested_date": cause.Optional(do.RequestedDate).
 			When(!do.RequestedDate.IsZero() && do.RequestedDate.Before(time.Now().AddDate(0, 0, 1)), "delivery date must be at least tomorrow").
-			When(!do.RequestedDate.IsZero() && do.RequestedDate.After(time.Now().AddDate(0, 0, 30)), "delivery date too far in future"),
+			When(!do.RequestedDate.IsZero() && do.RequestedDate.After(time.Now().AddDate(0, 0, 30)), "delivery date too far in future").Err(),
 
 		"instructions": cause.Optional(do.Instructions).
-			When(len(do.Instructions) > 200, "delivery instructions too long"),
+			When(len(do.Instructions) > 200, "delivery instructions too long").Err(),
 	}.Err()
 }
 
@@ -444,11 +459,6 @@ func ExampleCreateOrderRequest_validation() {
 }
 
 // Helper validation functions (simplified implementations)
-func isValidEmail(email string) bool {
-	_, err := mail.ParseAddress(email)
-	return err == nil
-}
-
 func isDisposableEmail(email string) bool {
 	disposableDomains := []string{"10minutemail.com", "tempmail.org", "guerrillamail.com"}
 	parts := strings.Split(email, "@")
