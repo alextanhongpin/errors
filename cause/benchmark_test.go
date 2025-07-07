@@ -10,13 +10,13 @@ import (
 func BenchmarkNewError(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = New(codes.Invalid, "TestError", "Test message")
+		_ = New(codes.BadRequest, "TestError", "Test message")
 	}
 }
 
 // BenchmarkErrorWithDetails benchmarks adding details to errors
 func BenchmarkErrorWithDetails(b *testing.B) {
-	err := New(codes.Invalid, "TestError", "Test message")
+	err := New(codes.BadRequest, "TestError", "Test message")
 	details := map[string]any{
 		"field": "test",
 		"value": "invalid",
@@ -30,7 +30,7 @@ func BenchmarkErrorWithDetails(b *testing.B) {
 
 // BenchmarkErrorWithStack benchmarks stack trace capture
 func BenchmarkErrorWithStack(b *testing.B) {
-	err := New(codes.Invalid, "TestError", "Test message")
+	err := New(codes.BadRequest, "TestError", "Test message")
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -70,19 +70,17 @@ func BenchmarkValidationComplex(b *testing.B) {
 		PaymentMethod: "credit_card",
 	}
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = order.Validate()
 	}
 }
 
 // BenchmarkErrorClone benchmarks error cloning
 func BenchmarkErrorClone(b *testing.B) {
-	err := New(codes.Invalid, "TestError", "Test message").
+	err := New(codes.BadRequest, "TestError", "Test message").
 		WithDetails(map[string]any{"field": "test"})
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = err.Clone()
 	}
 }

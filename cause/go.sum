@@ -1,0 +1,6 @@
+github.com/alextanhongpin/errors/codes v0.0.1 h1:SeB7OZwFSeQ4gEjjJsDLa1oCpdmllrIuQJGMGLhBAvg=
+github.com/alextanhongpin/errors/codes v0.0.1/go.mod h1:q4r4slHTqKWFpSgs1ZLIoXYRLq+woZzNqXcV/cumYPQ=
+golang.org/x/sys v0.31.0 h1:ioabZlmFYtWhL+TRYpcnNlLwhyxaM9kWTDEmfnprqik=
+golang.org/x/sys v0.31.0/go.mod h1:BJP2sWEmIv4KK5OTEluFJCKSidICx8ciO85XgH3Ak8k=
+google.golang.org/grpc v1.73.0 h1:VIWSmpI2MegBtTuFt5/JWy2oXxtjJ/e89Z70ImfD2ok=
+google.golang.org/grpc v1.73.0/go.mod h1:50sbHOUqWoCQGI8V2HQLJM0B+LMlIUjNSZmow7EVBQc=

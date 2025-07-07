@@ -12,13 +12,13 @@ import (
 var (
 	// User-related errors
 	ErrUserNotFound      = New(codes.NotFound, "UserNotFound", "User not found")
-	ErrUserAlreadyExists = New(codes.AlreadyExists, "UserExists", "User already exists")
-	ErrInvalidUserData   = New(codes.Invalid, "InvalidUser", "Invalid user data")
+	ErrUserAlreadyExists = New(codes.Exists, "UserExists", "User already exists")
+	ErrInvalidUserData   = New(codes.BadRequest, "InvalidUser", "Invalid user data")
 
 	// Authentication errors
-	ErrUnauthorized     = New(codes.Unauthenticated, "Unauthorized", "Authentication required")
-	ErrInvalidToken     = New(codes.Unauthenticated, "InvalidToken", "Invalid or expired token")
-	ErrPermissionDenied = New(codes.PermissionDenied, "PermissionDenied", "Insufficient permissions")
+	ErrUnauthorized     = New(codes.Unauthorized, "Unauthorized", "Authentication required")
+	ErrInvalidToken     = New(codes.BadRequest, "InvalidToken", "Invalid or expired token")
+	ErrPermissionDenied = New(codes.Forbidden, "PermissionDenied", "Insufficient permissions")
 
 	// System errors
 	ErrDatabaseConnection = New(codes.Internal, "DatabaseError", "Database connection failed")
