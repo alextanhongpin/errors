@@ -38,6 +38,17 @@ bench-mem: ## Run memory benchmarks with profiling
 	go test -bench=. -memprofile=mem.prof
 	@echo "Memory profile generated: mem.prof"
 
+bench-txt: ## Run benchmarks and output in txt format (bench.txt)
+	go test -bench=. -benchmem -run=^$ > bench.txt
+	@echo "Benchmark txt output written to bench.txt"
+
+benchstat: ## Compare two benchmark outputs using benchstat (usage: make benchstat OLD=bench_old.txt NEW=bench_new.txt)
+	@if [ -z "$(OLD)" ] || [ -z "$(NEW)" ]; then \
+		echo "Usage: make benchstat OLD=old.txt NEW=new.txt"; \
+		exit 1; \
+	fi
+	benchstat $(OLD) $(NEW)
+
 ##@ Code Quality
 lint: ## Run linter
 	golangci-lint run
