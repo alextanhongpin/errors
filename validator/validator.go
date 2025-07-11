@@ -56,6 +56,11 @@ func ValidateMany[T validatable](value []T) error {
 // errorMap is a map of field names to errors, used for structured error reporting.
 type errorMap map[string]any
 
+// Map returns the underlying map of the errorMap.
+func (e errorMap) Map() map[string]any {
+	return e
+}
+
 // Error returns a string representation of the invalid fields in the errorMap.
 func (e errorMap) Error() string {
 	return fmt.Sprintf("invalid fields: %s", strings.Join(slices.Sorted(maps.Keys(e)), ", "))
