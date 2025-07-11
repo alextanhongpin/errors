@@ -10,7 +10,7 @@ import (
 // Skip []
 var straceToggle = stacktrace.Caller(0)
 
-func ExampleDisable() {
+func Example_disable() {
 	err := handleStackTrace()
 	fmt.Println(stacktrace.Sprint(err))
 	fmt.Println()
@@ -26,7 +26,7 @@ func ExampleDisable() {
 	//     Origin is: stacktrace is enabled
 	//         at stacktrace_test.handleStackTrace (in examples_disable_test.go:35)
 	//     Ends here:
-	//         at stacktrace_test.ExampleDisable (in examples_disable_test.go:14)
+	//         at stacktrace_test.Example_disable (in examples_disable_test.go:14)
 	//
 	// Error: stacktrace is enabled: sql: no rows in result set
 }
