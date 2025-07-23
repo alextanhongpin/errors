@@ -11,8 +11,8 @@ import (
 
 var ErrStorage = cause.New(codes.Internal, "StorageError", "Storage error")
 
-func ExampleError_Wrap() {
-	var err error = ErrStorage.Wrap(sql.ErrNoRows)
+func ExampleError_WithCause() {
+	var err error = ErrStorage.WithCause(sql.ErrNoRows)
 	fmt.Println("is sql.ErrNoRows?:", errors.Is(err, sql.ErrNoRows))
 	fmt.Println("is ErrStorage?:", errors.Is(err, ErrStorage))
 
@@ -20,9 +20,11 @@ func ExampleError_Wrap() {
 	if errors.As(err, &causeErr) {
 		fmt.Println("cause:", causeErr.Unwrap())
 	}
+	fmt.Println(ErrStorage.Unwrap())
 
 	// Output:
 	// is sql.ErrNoRows?: true
 	// is ErrStorage?: true
 	// cause: sql: no rows in result set
+	// <nil>
 }

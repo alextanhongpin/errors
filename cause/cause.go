@@ -83,13 +83,6 @@ func (e *Error) Unwrap() error {
 	return e.Cause
 }
 
-// Wrap sets the cause error and returns the current error for method chaining.
-// This allows building error chains while preserving the original error context.
-func (e *Error) Wrap(err error) *Error {
-	e.Cause = err
-	return e
-}
-
 // Error returns the error message, implementing the standard error interface.
 func (e *Error) Error() string {
 	return e.Message
@@ -153,5 +146,19 @@ func (e *Error) WithStack() *Error {
 func (e *Error) WithAttrs(attrs ...slog.Attr) *Error {
 	err := e.Clone()
 	err.Attrs = append(err.Attrs, attrs...)
+	return err
+}
+
+// WithMessage returns a new error with the specified message formatted with args.
+func (e *Error) WithMessage(message string, args ...any) *Error {
+	err := e.Clone()
+	err.Message = fmt.Sprintf(message, args...)
+	return err
+}
+
+// WithCause returns a new error with the specified cause error.
+func (e *Error) WithCause(cause error) *Error {
+	err := e.Clone()
+	err.Cause = cause
 	return err
 }

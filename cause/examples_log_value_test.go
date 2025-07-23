@@ -18,7 +18,7 @@ var ErrPaymentFailed = cause.New(codes.Conflict, "PaymentFailedError", "Duplicat
 func ExampleError_LogValue() {
 	var err error = ErrPaymentFailed.WithDetails(map[string]any{
 		"order_id": "12345",
-	}).Wrap(ErrDuplicateRow.Wrap(sql.ErrNoRows))
+	}).WithCause(ErrDuplicateRow.WithCause(sql.ErrNoRows))
 
 	replacer := func(groups []string, a slog.Attr) slog.Attr {
 		if a.Key == "time" {
