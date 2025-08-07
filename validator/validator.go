@@ -108,7 +108,9 @@ func Map(m map[string]error) error {
 		}
 
 		if mapErr, ok := fieldErr.err.(errorMap); ok {
-			result[fieldErr.field] = mapErr
+			for k, v := range mapErr {
+				result[fieldErr.field+"."+k] = v
+			}
 			continue
 		}
 

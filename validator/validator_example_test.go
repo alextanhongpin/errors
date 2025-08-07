@@ -181,26 +181,16 @@ func Example_api_payload_validation() {
 	}
 	// Output:
 	// {
-	//   "address": {
-	//     "city": "required",
-	//     "street": "required"
-	//   },
+	//   "address.city": "required",
+	//   "address.street": "required",
 	//   "email": "required",
 	//   "name": "required",
-	//   "orders[0]": {
-	//     "amount": "required",
-	//     "id": "required",
-	//     "product": {
-	//       "code": "required",
-	//       "price": "price must be at least 1"
-	//     }
-	//   },
-	//   "orders[1]": {
-	//     "product": {
-	//       "code": "required",
-	//       "price": "price must be at least 1"
-	//     }
-	//   },
+	//   "orders[0].amount": "required",
+	//   "orders[0].id": "required",
+	//   "orders[0].product.code": "required",
+	//   "orders[0].product.price": "price must be at least 1",
+	//   "orders[1].product.code": "required",
+	//   "orders[1].product.price": "price must be at least 1",
 	//   "password": "must be at least 8 characters, must contain a capital letter, must contain a number"
 	// }
 }
