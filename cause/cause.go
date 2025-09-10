@@ -5,6 +5,7 @@ package cause
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -20,19 +21,19 @@ import (
 // error interface and provides enhanced logging capabilities.
 type Error struct {
 	// Attrs contains structured logging attributes
-	Attrs []slog.Attr `json:"-"`
+	Attrs []slog.Attr
 	// Cause is the underlying wrapped error
-	Cause error `json:"-"`
+	Cause error
 	// Code represents the error classification
-	Code codes.Code `json:"code"`
+	Code codes.Code
 	// Details contains additional context as key-value pairs
-	Details map[string]any `json:"details,omitempty"`
+	Details map[string]any
 	// Message is the human-readable error message
-	Message string `json:"message"`
+	Message string
 	// Name is a unique identifier for this error type
-	Name string `json:"name"`
+	Name string
 	// Stack contains the stack trace when the error was created
-	Stack []byte `json:"stack,omitempty"`
+	Stack []byte
 }
 
 // New creates a new Error with the specified code, name, and message.
@@ -161,4 +162,74 @@ func (e *Error) WithCause(cause error) *Error {
 	err := e.Clone()
 	err.Cause = cause
 	return err
+}
+
+func (e *Error) MarshalJSON() ([]byte, error) {
+	return json.Marshal(errorJSON{
+		Cause:   asErrorJSON(e.Cause),
+		Code:    e.Code,
+		Details: e.Details,
+		Message: e.Message,
+		Name:    e.Name,
+		Stack:   e.Stack,
+	})
+}
+
+func (e *Error) UnmarshalJSON(b []byte) error {
+	var j errorJSON
+	err := json.Unmarshal(b, &j)
+	if err != nil {
+		return err
+	}
+	e.Cause = j.Cause
+	e.Code = j.Code
+	e.Details = j.Details
+	e.Message = j.Message
+	e.Name = j.Name
+	e.Stack = j.Stack
+	return nil
+}
+
+type errorJSON struct {
+	Cause   *errorJSON     `json:"cause,omitempty"`
+	Code    codes.Code     `json:"code"`
+	Details map[string]any `json:"details,omitempty"`
+	Message string         `json:"message"`
+	Name    string         `json:"name"`
+	Stack   []byte         `json:"stack,omitempty"`
+}
+
+func (e *errorJSON) Error() string {
+	return e.Message
+}
+
+func (e *errorJSON) Unwrap() error {
+	// Otherwise, it will be interpreted as nil error.
+	if e.Cause == nil {
+		return nil
+	}
+
+	return e.Cause
+}
+
+func (e *errorJSON) Is(err error) bool {
+	// Fallback to string comparison.
+	return e.Message == err.Error()
+}
+
+func asErrorJSON(err error) *errorJSON {
+	if err == nil {
+		return nil
+	}
+	var e *errorJSON
+	if errors.As(err, &e) {
+		return e
+	}
+
+	return &errorJSON{
+		Cause:   asErrorJSON(errors.Unwrap(err)),
+		Code:    codes.Unknown,
+		Message: err.Error(),
+		Name:    codes.Text(codes.Unknown),
+	}
 }
