@@ -20,19 +20,19 @@ import (
 // error interface and provides enhanced logging capabilities.
 type Error struct {
 	// Attrs contains structured logging attributes
-	Attrs []slog.Attr
+	Attrs []slog.Attr `json:"-"`
 	// Cause is the underlying wrapped error
-	Cause error
+	Cause error `json:"-"`
 	// Code represents the error classification
-	Code codes.Code
+	Code codes.Code `json:"code"`
 	// Details contains additional context as key-value pairs
-	Details map[string]any
+	Details map[string]any `json:"details,omitempty"`
 	// Message is the human-readable error message
-	Message string
+	Message string `json:"message"`
 	// Name is a unique identifier for this error type
-	Name string
+	Name string `json:"name"`
 	// Stack contains the stack trace when the error was created
-	Stack []byte
+	Stack []byte `json:"stack,omitempty"`
 }
 
 // New creates a new Error with the specified code, name, and message.
