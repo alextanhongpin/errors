@@ -58,7 +58,7 @@ func ExampleError_marshal_nested() {
 	fmt.Println("is ErrNested?:", errors.Is(causeErr, ErrNested))
 
 	// Output:
-	// {"cause":{"cause":{"code":17,"message":"sql: no rows in result set","name":"Unknown"},"code":17,"message":"One level of nesting","name":"Unknown"},"code":17,"message":"This needs to be fixed","name":"Unknown error"}
+	// {"cause":{"cause":{"code":17,"message":"sql: no rows in result set","name":"Unknown"},"code":17,"message":"One level of nesting","name":"Nested error"},"code":17,"message":"This needs to be fixed","name":"Unknown error"}
 	// is sql.ErrNoRows?: true
 	// is ErrUnknown?: true
 	// is ErrNested?: true

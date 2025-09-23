@@ -165,14 +165,7 @@ func (e *Error) WithCause(cause error) *Error {
 }
 
 func (e *Error) MarshalJSON() ([]byte, error) {
-	return json.Marshal(errorJSON{
-		Cause:   asErrorJSON(e.Cause),
-		Code:    e.Code,
-		Details: e.Details,
-		Message: e.Message,
-		Name:    e.Name,
-		Stack:   e.Stack,
-	})
+	return json.Marshal(e.asErrorJSON())
 }
 
 func (e *Error) UnmarshalJSON(b []byte) error {
@@ -188,6 +181,17 @@ func (e *Error) UnmarshalJSON(b []byte) error {
 	e.Name = j.Name
 	e.Stack = j.Stack
 	return nil
+}
+
+func (e *Error) asErrorJSON() *errorJSON {
+	return &errorJSON{
+		Cause:   asErrorJSON(e.Cause),
+		Code:    e.Code,
+		Details: e.Details,
+		Message: e.Message,
+		Name:    e.Name,
+		Stack:   e.Stack,
+	}
 }
 
 type errorJSON struct {
@@ -221,9 +225,14 @@ func asErrorJSON(err error) *errorJSON {
 	if err == nil {
 		return nil
 	}
-	var e *errorJSON
+	var ej *errorJSON
+	if errors.As(err, &ej) {
+		return ej
+	}
+
+	var e *Error
 	if errors.As(err, &e) {
-		return e
+		return e.asErrorJSON()
 	}
 
 	return &errorJSON{
