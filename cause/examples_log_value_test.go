@@ -19,6 +19,7 @@ func ExampleError_LogValue() {
 	var err error = ErrPaymentFailed.WithDetails(map[string]any{
 		"order_id": "12345",
 	}).WithCause(ErrDuplicateRow.WithCause(sql.ErrNoRows))
+	fmt.Println(err)
 
 	replacer := func(groups []string, a slog.Attr) slog.Attr {
 		if a.Key == "time" {
@@ -39,27 +40,30 @@ func ExampleError_LogValue() {
 	fmt.Println(b.String())
 
 	// Output:
+	// Duplicate payment attempt
+	//   Caused by: Duplicate row
+	//   Caused by: sql: no rows in result set
 	// {
 	//   "time": "2025-06-07T00:52:24.115438Z",
 	//   "level": "ERROR",
 	//   "source": {
 	//     "function": "github.com/alextanhongpin/errors/cause_test.ExampleError_LogValue",
 	//     "file": "/Users/alextanhongpin/Documents/go/errors/cause/examples_log_value_test.go",
-	//     "line": 32
+	//     "line": 33
 	//   },
 	//   "msg": "payment failed",
 	//   "error": {
 	//     "message": "Duplicate payment attempt",
 	//     "code": "conflict",
 	//     "name": "PaymentFailedError",
-	//     "details": {
-	//       "order_id": "12345"
-	//     },
 	//     "cause": {
 	//       "message": "Duplicate row",
 	//       "code": "exists",
 	//       "name": "DuplicateRowError",
 	//       "cause": "sql: no rows in result set"
+	//     },
+	//     "details": {
+	//       "order_id": "12345"
 	//     }
 	//   }
 	// }

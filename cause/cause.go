@@ -43,26 +43,11 @@ type Error struct {
 // Example:
 //
 //	err := New(codes.NotFound, "UserNotFound", "User %s not found", userID)
-//	errWithAttrs := New(codes.Invalid, "ValidationError", "Invalid input",
-//	    slog.String("field", "email"), slog.Int("length", len(email)))
 func New(code codes.Code, name, message string, args ...any) *Error {
-	var attrs []slog.Attr
-	var formatArgs []any
-
-	// Separate slog.Attr from formatting arguments
-	for _, arg := range args {
-		if attr, ok := arg.(slog.Attr); ok {
-			attrs = append(attrs, attr)
-		} else {
-			formatArgs = append(formatArgs, arg)
-		}
-	}
-
 	return &Error{
-		Attrs:   attrs,
 		Code:    code,
 		Details: make(map[string]any),
-		Message: fmt.Sprintf(message, formatArgs...),
+		Message: fmt.Sprintf(message, args...),
 		Name:    name,
 	}
 }
@@ -86,6 +71,9 @@ func (e *Error) Unwrap() error {
 
 // Error returns the error message, implementing the standard error interface.
 func (e *Error) Error() string {
+	if e.Cause != nil {
+		return fmt.Sprintf("%s\n  Caused by: %s", e.Message, e.Cause)
+	}
 	return e.Message
 }
 
@@ -93,17 +81,24 @@ func (e *Error) Error() string {
 // It returns a grouped slog.Value containing all error context including
 // message, code, name, attributes, details, and cause.
 func (e Error) LogValue() slog.Value {
-	attrs := append([]slog.Attr{
+	attrs := []slog.Attr{
 		slog.String("message", e.Message),
 		slog.String("code", e.Code.String()),
 		slog.String("name", e.Name),
-	}, e.Attrs...)
+	}
 
-	if len(e.Details) > 0 {
-		attrs = append(attrs, slog.Any("details", e.Details))
+	if len(e.Attrs) > 0 {
+		data := make([]any, len(e.Attrs))
+		for i, attr := range e.Attrs {
+			data[i] = attr
+		}
+		attrs = append(attrs, slog.Group("data", data...))
 	}
 	if e.Cause != nil {
 		attrs = append(attrs, slog.Any("cause", e.Cause))
+	}
+	if len(e.Details) > 0 {
+		attrs = append(attrs, slog.Any("details", e.Details))
 	}
 
 	return slog.GroupValue(attrs...)

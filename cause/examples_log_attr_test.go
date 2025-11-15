@@ -31,6 +31,7 @@ func ExampleError_log_attr() {
 	if err := json.Indent(b, data, "", "  "); err != nil {
 		panic(err)
 	}
+
 	fmt.Println(b.String())
 
 	// Output:
@@ -47,7 +48,9 @@ func ExampleError_log_attr() {
 	//     "message": "email=xyz@mail.com is invalid",
 	//     "code": "bad_request",
 	//     "name": "BadRequest",
-	//     "email": "xyz@mail.com"
+	//     "data": {
+	//       "email": "xyz@mail.com"
+	//     }
 	//   }
 	// }
 }
