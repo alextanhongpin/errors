@@ -88,11 +88,7 @@ func (e Error) LogValue() slog.Value {
 	}
 
 	if len(e.Attrs) > 0 {
-		data := make([]any, len(e.Attrs))
-		for i, attr := range e.Attrs {
-			data[i] = attr
-		}
-		attrs = append(attrs, slog.Group("data", data...))
+		attrs = append(attrs, slog.GroupAttrs("data", e.Attrs...))
 	}
 	if e.Cause != nil {
 		attrs = append(attrs, slog.Any("cause", e.Cause))
