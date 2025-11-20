@@ -4,13 +4,12 @@
 package cause
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
 	"maps"
-	"runtime/debug"
+	"runtime"
 	"slices"
 
 	"github.com/alextanhongpin/errors/codes"
@@ -33,7 +32,7 @@ type Error struct {
 	// Name is a unique identifier for this error type
 	Name string
 	// Stack contains the stack trace when the error was created
-	Stack []byte
+	Stack string
 }
 
 // New creates a new Error with the specified code, name, and message.
@@ -72,8 +71,15 @@ func (e *Error) Unwrap() error {
 // Error returns the error message, implementing the standard error interface.
 func (e *Error) Error() string {
 	if e.Cause != nil {
-		return fmt.Sprintf("%s\n  Caused by: %s", e.Message, e.Cause)
+		if len(e.Stack) > 0 {
+			return fmt.Sprintf("%s\n\t%s\nCaused by: %s", e.Message, e.Stack, e.Cause)
+		}
+		return fmt.Sprintf("%s\nCaused by: %s", e.Message, e.Cause)
 	}
+	if len(e.Stack) > 0 {
+		return fmt.Sprintf("%s\n\t%s", e.Message, e.Stack)
+	}
+
 	return e.Message
 }
 
@@ -100,11 +106,6 @@ func (e Error) LogValue() slog.Value {
 	return slog.GroupValue(attrs...)
 }
 
-// StackTrace returns the captured stack trace.
-func (e *Error) StackTrace() []byte {
-	return e.Stack
-}
-
 // Clone creates a deep copy of the error, allowing safe modification
 // without affecting the original error.
 func (e *Error) Clone() *Error {
@@ -115,7 +116,7 @@ func (e *Error) Clone() *Error {
 		Details: maps.Clone(e.Details),
 		Message: e.Message,
 		Name:    e.Name,
-		Stack:   bytes.Clone(e.Stack),
+		Stack:   e.Stack,
 	}
 }
 
@@ -129,8 +130,13 @@ func (e *Error) WithDetails(details map[string]any) *Error {
 
 // WithStack returns a new error with the current stack trace captured.
 func (e *Error) WithStack() *Error {
+	_, file, line, ok := runtime.Caller(1)
+	if !ok {
+		return e
+	}
+
 	err := e.Clone()
-	err.Stack = debug.Stack()
+	err.Stack = fmt.Sprintf("at %s.%d", file, line)
 	return err
 }
 
@@ -191,7 +197,7 @@ type errorJSON struct {
 	Details map[string]any `json:"details,omitempty"`
 	Message string         `json:"message"`
 	Name    string         `json:"name"`
-	Stack   []byte         `json:"stack,omitempty"`
+	Stack   string         `json:"stack,omitempty"`
 }
 
 func (e *errorJSON) Error() string {

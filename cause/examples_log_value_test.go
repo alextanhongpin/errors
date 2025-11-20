@@ -41,8 +41,8 @@ func ExampleError_LogValue() {
 
 	// Output:
 	// Duplicate payment attempt
-	//   Caused by: Duplicate row
-	//   Caused by: sql: no rows in result set
+	// Caused by: Duplicate row
+	// Caused by: sql: no rows in result set
 	// {
 	//   "time": "2025-06-07T00:52:24.115438Z",
 	//   "level": "ERROR",
