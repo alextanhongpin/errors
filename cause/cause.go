@@ -166,7 +166,7 @@ func (e *Error) MarshalJSON() ([]byte, error) {
 }
 
 func (e *Error) UnmarshalJSON(b []byte) error {
-	var j errorJSON
+	var j *errorJSON
 	err := json.Unmarshal(b, &j)
 	if err != nil {
 		return err
@@ -184,7 +184,7 @@ func (e *Error) asErrorJSON() *errorJSON {
 	return &errorJSON{
 		Cause:   asErrorJSON(e.Cause),
 		Code:    e.Code,
-		Details: e.Details,
+		Details: maps.Clone(e.Details),
 		Message: e.Message,
 		Name:    e.Name,
 		Stack:   e.Stack,
@@ -201,10 +201,16 @@ type errorJSON struct {
 }
 
 func (e *errorJSON) Error() string {
+	if e == nil {
+		return ""
+	}
 	return e.Message
 }
 
 func (e *errorJSON) Unwrap() error {
+	if e == nil {
+		return nil
+	}
 	// Otherwise, it will be interpreted as nil error.
 	if e.Cause == nil {
 		return nil
@@ -214,7 +220,7 @@ func (e *errorJSON) Unwrap() error {
 }
 
 func (e *errorJSON) Is(err error) bool {
-	if err == nil {
+	if e == nil || err == nil {
 		return false
 	}
 	// Fallback to string comparison.
