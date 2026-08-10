@@ -214,6 +214,9 @@ func (e *errorJSON) Unwrap() error {
 }
 
 func (e *errorJSON) Is(err error) bool {
+	if err == nil {
+		return false
+	}
 	// Fallback to string comparison.
 	return e.Message == err.Error()
 }
