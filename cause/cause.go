@@ -70,7 +70,7 @@ func (e *Error) Unwrap() error {
 
 // Error returns the error message, implementing the standard error interface.
 func (e *Error) Error() string {
-	if e.Cause != nil {
+	if e.Cause != nil && e.Cause.Error() != "" {
 		if len(e.Stack) > 0 {
 			return fmt.Sprintf("%s\n\t%s\nCaused by: %s", e.Message, e.Stack, e.Cause)
 		}
