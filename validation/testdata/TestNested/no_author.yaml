@@ -1,0 +1,8 @@
+name: no author
+input:
+  title: My Book
+  author: null
+error:
+  author:
+  - required
+errorString: "author: required"

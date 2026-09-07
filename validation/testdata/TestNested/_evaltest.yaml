@@ -1,0 +1,40 @@
+name: ok
+input:
+  title: My Book
+  author:
+    name: John Appleseed
+assert:
+  - name: no error
+    value: err == nil
+---
+name: no book title, has author
+input:
+  title:
+  author:
+    name: John Appleseed
+assert:
+  - name: has error
+    value: err != nil
+---
+name: no author name
+input:
+  title: My Book
+  author:
+    name:
+assert:
+  - name: has error
+    value: err != nil
+---
+name: no author
+input:
+  title: My Book
+assert:
+  - name: has error
+    value: err != nil
+---
+name: zero
+input:
+  title:
+assert:
+  - name: has error
+    value: err != nil

@@ -1,0 +1,8 @@
+name: no age
+input:
+  name: John Appleseed
+  age: 0
+error:
+  age:
+  - underage
+errorString: "age: underage"

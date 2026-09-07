@@ -1,0 +1,73 @@
+name: ok
+input:
+  spouses:
+    - name: Ms. Alice
+      age: 21
+    - name: Mr. Bob
+      age: 21
+assert:
+  - name: no error
+    value: err == nil
+---
+name: with children
+input:
+  spouses:
+    - name: Ms. Alice
+      age: 21
+    - name: Mr. Bob
+      age: 21
+  children:
+    - name: Charles
+      age: 13
+assert:
+  - name: no error
+    value: err == nil
+---
+name: children empty
+input:
+  spouses:
+    - name: Ms. Alice
+      age: 21
+    - name: Mr. Bob
+      age: 21
+  children:
+    - name:
+      age:
+assert:
+  - name: has error
+    value: err != nil
+---
+name: children no name
+input:
+  spouses:
+    - name: Ms. Alice
+      age: 21
+    - name: Mr. Bob
+      age: 21
+  children:
+    - name:
+      age: 14
+assert:
+  - name: has error
+    value: err != nil
+---
+name: children no age
+input:
+  spouses:
+    - name: Ms. Alice
+      age: 21
+    - name: Mr. Bob
+      age: 21
+  children:
+    - name: Charles
+      age:
+assert:
+  - name: has error
+    value: err != nil
+---
+name: no spouses
+input:
+  spouses:
+assert:
+  - name: has error
+    value: err != nil

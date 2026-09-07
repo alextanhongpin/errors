@@ -1,0 +1,10 @@
+name: with children
+input:
+  spouses:
+  - name: Ms. Alice
+    age: 21
+  - name: Mr. Bob
+    age: 21
+  children:
+  - name: Charles
+    age: 13

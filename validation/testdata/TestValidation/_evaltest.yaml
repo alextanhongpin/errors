@@ -1,0 +1,32 @@
+name: ok
+description: valid name and age
+input:
+  name: John Appleseed
+  age: 13
+assert:
+  - name: no error
+    value: err == nil
+---
+name: no name
+input:
+  name:
+  age: 13
+assert:
+  - name: has error
+    value: err != nil
+---
+name: no age
+input:
+  name: John Appleseed
+  age:
+assert:
+  - name: has error
+    value: err != nil
+---
+name: no name and age
+input:
+  name:
+  age:
+assert:
+  - name: has error
+    value: err != nil

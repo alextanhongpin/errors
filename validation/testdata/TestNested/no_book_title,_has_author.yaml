@@ -1,0 +1,9 @@
+name: no book title, has author
+input:
+  title: ""
+  author:
+    name: John Appleseed
+error:
+  title:
+  - required
+errorString: "title: required"

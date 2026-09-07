@@ -1,0 +1,5 @@
+name: ok
+description: valid name and age
+input:
+  name: John Appleseed
+  age: 13

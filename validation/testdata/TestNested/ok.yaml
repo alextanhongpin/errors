@@ -1,0 +1,5 @@
+name: ok
+input:
+  title: My Book
+  author:
+    name: John Appleseed

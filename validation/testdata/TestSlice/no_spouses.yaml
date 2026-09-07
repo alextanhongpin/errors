@@ -1,0 +1,8 @@
+name: no spouses
+input:
+  spouses: []
+  children: []
+error:
+  spouses:
+  - required
+errorString: "spouses: required"

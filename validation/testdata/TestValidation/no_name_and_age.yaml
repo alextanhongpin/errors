@@ -1,0 +1,12 @@
+name: no name and age
+input:
+  name: ""
+  age: 0
+error:
+  age:
+  - underage
+  name:
+  - required
+errorString: |-
+  age: underage
+  name: required

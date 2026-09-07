@@ -1,0 +1,8 @@
+name: ok
+input:
+  spouses:
+  - name: Ms. Alice
+    age: 21
+  - name: Mr. Bob
+    age: 21
+  children: []

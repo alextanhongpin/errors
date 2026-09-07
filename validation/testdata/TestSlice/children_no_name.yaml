@@ -1,0 +1,14 @@
+name: children no name
+input:
+  spouses:
+  - name: Ms. Alice
+    age: 21
+  - name: Mr. Bob
+    age: 21
+  children:
+  - name: ""
+    age: 14
+error:
+  children[0].name:
+  - required
+errorString: "children[0].name: required"

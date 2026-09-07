@@ -1,0 +1,18 @@
+name: children empty
+input:
+  spouses:
+  - name: Ms. Alice
+    age: 21
+  - name: Mr. Bob
+    age: 21
+  children:
+  - name: ""
+    age: 0
+error:
+  children[0].age:
+  - underage
+  children[0].name:
+  - required
+errorString: |-
+  children[0].age: underage
+  children[0].name: required

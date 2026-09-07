@@ -1,0 +1,8 @@
+name: no name
+input:
+  name: ""
+  age: 13
+error:
+  name:
+  - required
+errorString: "name: required"

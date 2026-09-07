@@ -1,0 +1,12 @@
+name: zero
+input:
+  title: ""
+  author: null
+error:
+  author:
+  - required
+  title:
+  - required
+errorString: |-
+  author: required
+  title: required

@@ -1,0 +1,14 @@
+name: children no age
+input:
+  spouses:
+  - name: Ms. Alice
+    age: 21
+  - name: Mr. Bob
+    age: 21
+  children:
+  - name: Charles
+    age: 0
+error:
+  children[0].age:
+  - underage
+errorString: "children[0].age: underage"
