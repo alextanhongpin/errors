@@ -69,7 +69,7 @@ func (e Errors) Add(key string, vals string) {
 
 func (e Errors) Error() error {
 	keys := slices.Sorted(maps.Keys(e))
-	errs := make(errorMap)
+	errs := make(ErrorMap)
 	for _, key := range keys {
 		vals := filter(e[key])
 		if len(vals) == 0 {

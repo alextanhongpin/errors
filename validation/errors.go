@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-var _ error = make(errorMap)
+var _ error = make(ErrorMap)
 
 func filter(ss []string) []string {
 	var res []string
@@ -20,9 +20,9 @@ func filter(ss []string) []string {
 	return res
 }
 
-type errorMap map[string][]string
+type ErrorMap map[string][]string
 
-func (e errorMap) Error() string {
+func (e ErrorMap) Error() string {
 	keys := slices.Sorted(maps.Keys(e))
 	res := make([]string, len(keys))
 	for i, key := range keys {
