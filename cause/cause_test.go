@@ -26,3 +26,19 @@ func TestCause(t *testing.T) {
 		t.Fatal("want err unsupported")
 	}
 }
+
+type UserError struct {
+	Code    string
+	Message string
+}
+
+func (e *UserError) Is(err error) bool {
+	cause, ok := errors.AsType[*UserError](err)
+	if !ok {
+		return false
+	}
+	return e.Message == cause.Message && e.Code == cause.Code
+}
+func (e *UserError) Error() string {
+	return e.Message
+}

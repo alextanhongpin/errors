@@ -16,8 +16,7 @@ func ExampleError_WithCause() {
 	fmt.Println("is sql.ErrNoRows?:", errors.Is(err, sql.ErrNoRows))
 	fmt.Println("is ErrStorage?:", errors.Is(err, ErrStorage))
 
-	var causeErr *cause.Error
-	if errors.As(err, &causeErr) {
+	if causeErr, ok := errors.AsType[*cause.Error](err); ok {
 		fmt.Println("cause:", causeErr.Unwrap())
 	}
 	fmt.Println(ErrStorage.Unwrap())
@@ -27,4 +26,12 @@ func ExampleError_WithCause() {
 	// is ErrStorage?: true
 	// cause: sql: no rows in result set
 	// <nil>
+}
+
+func ExampleError_Unwrap_withoutCause() {
+	var err error = ErrStorage
+	fmt.Println(errors.Unwrap(err) == nil)
+
+	// Output:
+	// true
 }

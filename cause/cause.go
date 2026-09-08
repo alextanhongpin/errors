@@ -54,8 +54,8 @@ func New(code codes.Code, name, message string, args ...any) *Error {
 // Is reports whether this error matches the target error.
 // Two errors match if they have the same Code and Name.
 func (e *Error) Is(target error) bool {
-	var other *Error
-	if !errors.As(target, &other) {
+	other, ok := errors.AsType[*Error](target)
+	if !ok {
 		return false
 	}
 
@@ -166,7 +166,7 @@ func (e *Error) MarshalJSON() ([]byte, error) {
 }
 
 func (e *Error) UnmarshalJSON(b []byte) error {
-	var j *errorJSON
+	var j errorJSON
 	err := json.Unmarshal(b, &j)
 	if err != nil {
 		return err
@@ -223,21 +223,22 @@ func (e *errorJSON) Is(err error) bool {
 	if e == nil || err == nil {
 		return false
 	}
-	// Fallback to string comparison.
-	return e.Message == err.Error()
+	ej, ok := errors.AsType[*errorJSON](err)
+	if !ok {
+		ej = asErrorJSON(err)
+	}
+	return e.Code == ej.Code && e.Name == ej.Name && e.Message == ej.Message
 }
 
 func asErrorJSON(err error) *errorJSON {
 	if err == nil {
 		return nil
 	}
-	var ej *errorJSON
-	if errors.As(err, &ej) {
-		return ej
+	if e, ok := errors.AsType[*errorJSON](err); ok {
+		return e
 	}
 
-	var e *Error
-	if errors.As(err, &e) {
+	if e, ok := errors.AsType[*Error](err); ok {
 		return e.asErrorJSON()
 	}
 

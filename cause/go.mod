@@ -1,6 +1,6 @@
 module github.com/alextanhongpin/errors/cause
 
-go 1.24.2
+go 1.27.0
 
 require github.com/alextanhongpin/errors/codes v0.0.1
 
