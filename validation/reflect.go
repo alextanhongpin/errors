@@ -2,6 +2,8 @@ package validation
 
 import "reflect"
 
+// IsNilOrZero reports whether the value is nil or the zero value for its type.
+// It handles pointers, maps, slices, chans, funcs, interfaces, and zero-valued structs/primitives.
 func IsNilOrZero(x any) bool {
 	if x == nil {
 		return true
