@@ -40,3 +40,7 @@ func (e ErrorMap) Error() string {
 
 	return strings.Join(res, "\n")
 }
+
+func (e ErrorMap) Map() map[string][]string {
+	return e
+}

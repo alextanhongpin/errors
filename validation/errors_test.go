@@ -1,11 +1,33 @@
 package validation_test
 
 import (
+	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/alextanhongpin/errors/validation"
 	"github.com/alextanhongpin/evaltest"
 )
+
+func ExampleErrorMap_typeAssertion() {
+	var err error = validation.ErrorMap{}
+
+	// Allow user to assert type as interface instead of concrete ErrorMap
+	// implementation.
+	type em interface {
+		Map() map[string][]string
+	}
+	var m em
+	fmt.Println("is Map interface", errors.As(err, &m), m.Map())
+	fmt.Println("is ErrorMap")
+
+	// Assert as concrete implementation.
+	fmt.Println(errors.AsType[validation.ErrorMap](err))
+	// Output:
+	// is Map interface true map[]
+	// is ErrorMap
+	//  true
+}
 
 func TestValidation(t *testing.T) {
 	evaltest.Run(t, func(t *evaltest.T, input *User) (any, error) {
