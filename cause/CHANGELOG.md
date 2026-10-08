@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `From` normalizes ordinary errors for standard JSON encoding and round-trip comparison
 - Initial implementation of structured error handling package
 - Core Error type with support for codes, names, messages, attributes, and details
 - Comprehensive validation framework with fluent API
@@ -21,13 +22,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Contributing guidelines
 
 ### Changed
-- N/A (initial release)
+- Error JSON uses string codes and ordered causes without a version field
+- Named errors compare by code and name; unnamed and ordinary errors also compare message text
+- `Error.MarshalJSON` handles values and pointers with the same JSON representation
 
 ### Deprecated
 - N/A (initial release)
 
 ### Removed
-- N/A (initial release)
+- Codec, sentinel mappings, identity interfaces, and client/storage adapters; use direct JSON encoding on `*cause.Error` and `From`
+- Error JSON documents use string codes and do not include a version field; numeric-code documents remain unsupported
 
 ### Fixed
 - N/A (initial release)

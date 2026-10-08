@@ -67,6 +67,101 @@ func fetchUser(id string) error {
 }
 ```
 
+## JSON errors and comparison
+
+Marshal `cause.Error` values or pointers directly with `encoding/json`. Both use
+the same JSON representation, including when stored in a map or slice.
+Decode into `*cause.Error` and compare with the original using `errors.Is`:
+
+```go
+original := cause.ErrNotFound.WithCause(sql.ErrNoRows)
+data, err := json.Marshal(original)
+if err != nil {
+    return err
+}
+
+var restored *cause.Error
+if err := json.Unmarshal(data, &restored); err != nil {
+    return err
+}
+fmt.Println(errors.Is(restored, original))     // true
+fmt.Println(errors.Is(restored, sql.ErrNoRows)) // true
+```
+
+For an ordinary top-level error, use `cause.From`:
+
+```go
+data, err := json.Marshal(cause.From(sql.ErrNoRows))
+```
+
+`From` returns an existing `*cause.Error` unchanged. Other errors normalize to the
+unknown code, an empty name, their error message, and their wrapped causes. Nil
+and typed-nil inputs return nil. Nested ordinary errors normalize automatically.
+
+Named errors compare by exact `Code + Name`, independently of their message and
+details. Unnamed errors also compare `Message`. Consequently, after decoding,
+`sql.ErrNoRows` and `errors.New(sql.ErrNoRows.Error())` intentionally match.
+Different ordinary messages do not match. This preserves semantic comparison,
+not pointer equality or arbitrary original concrete types and `Is`/`As` behavior.
+`errors.Is(restored, original)` is the supported direction; an external error
+such as `sql.ErrNoRows` cannot implement the reverse comparison for this package.
+
+The JSON shape uses string codes and ordered causes:
+
+```json
+{
+  "code": "unknown",
+  "name": "",
+  "message": "sql: no rows in result set"
+}
+```
+
+Wrapped context and all `errors.Join` branches survive round trips. Decoded wire
+nodes are `*cause.Error`; multiple branches are linked using `errors.Join` behind
+an internal wrapper that keeps repeated JSON round trips stable. Use `errors.Is`
+for tree membership and `errors.As` to inspect structured nodes. `Error.Is`
+compares only the supplied target node and never unwraps the target.
+
+The same JSON can be returned to clients or stored as JSON/text in a database.
+Stacks and logging attributes are omitted. Applications select safe messages,
+details, and causes before returning errors to clients; there is no separate
+public projection or database adapter. Store the resulting JSON bytes and decode
+them with `json.Unmarshal` when reading them back.
+
+Clients can use the same comparison rule:
+
+```javascript
+function sameError(a, b) {
+  return typeof a?.code === "string" && typeof a?.name === "string" &&
+    a.code === b?.code && a.name === b?.name &&
+    (a.name !== "" || a.message === b?.message);
+}
+
+function containsError(error, target) {
+  return sameError(error, target) ||
+    (error?.causes ?? []).some(cause => containsError(cause, target));
+}
+```
+
+Details must be JSON-compatible. Numbers decode as `json.Number`; encode large
+identifiers as strings for browser precision. Unsupported details, invalid code
+strings, malformed fields, and invalid cause branches
+return errors. Unknown JSON fields are ignored. Failed decoding leaves an existing
+receiver unchanged; successful decoding replaces it completely.
+
+Nil pointers encode as `null`. Decode into a `*cause.Error` variable to represent
+JSON `null` as nil; decoding `null` into an existing `cause.Error` value resets it.
+Fixed internal safeguards reject cycles and documents beyond 64 error levels,
+1,024 node occurrences, or 1 MiB. Limits apply to each error document before outer
+JSON formatting, not the enclosing response; the byte limit does not bound all
+encoding allocations. Encoding can run concurrently when the input is immutable;
+each decoding operation requires its own destination.
+
+The codec, mappings, identity interfaces, and client/storage adapters have been
+removed. Documents with numeric codes are rejected; `code` must be a string. See
+[ADR 001](adr/0001-error-serialization-and-comparison.md) and the
+[executable JSON examples](examples_json_test.go).
+
 ## Validation Framework
 
 The package includes a powerful validation framework for validating complex data structures:

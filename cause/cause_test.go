@@ -9,36 +9,16 @@ import (
 )
 
 func TestCause(t *testing.T) {
-	err := cause.ErrUnknown.WithCause(errors.ErrUnsupported)
-	b, mErr := json.Marshal(err)
-	if mErr != nil {
-		t.Fatal(mErr)
-	}
-	var c *cause.Error
-	if err := json.Unmarshal(b, &c); err != nil {
+	original := cause.ErrUnknown.WithCause(errors.ErrUnsupported)
+	data, err := json.Marshal(original)
+	if err != nil {
 		t.Fatal(err)
 	}
-	if !errors.Is(c, cause.ErrUnknown) {
-		t.Fatal("want err unknown")
+	var restored *cause.Error
+	if err := json.Unmarshal(data, &restored); err != nil {
+		t.Fatal(err)
 	}
-
-	if !errors.Is(c, errors.ErrUnsupported) {
-		t.Fatal("want err unsupported")
+	if !errors.Is(restored, cause.ErrUnknown) || !errors.Is(restored, errors.ErrUnsupported) {
+		t.Fatal("round trip lost comparison")
 	}
-}
-
-type UserError struct {
-	Code    string
-	Message string
-}
-
-func (e *UserError) Is(err error) bool {
-	cause, ok := errors.AsType[*UserError](err)
-	if !ok {
-		return false
-	}
-	return e.Message == cause.Message && e.Code == cause.Code
-}
-func (e *UserError) Error() string {
-	return e.Message
 }

@@ -4,8 +4,6 @@
 package cause
 
 import (
-	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"maps"
@@ -29,7 +27,7 @@ type Error struct {
 	Details map[string]any
 	// Message is the human-readable error message
 	Message string
-	// Name is a unique identifier for this error type
+	// Name is a stable, case-sensitive machine identifier for this error type
 	Name string
 	// Stack contains the stack trace when the error was created
 	Stack string
@@ -52,24 +50,35 @@ func New(code codes.Code, name, message string, args ...any) *Error {
 }
 
 // Is reports whether this error matches the target error.
-// Two errors match if they have the same Code and Name.
+// Named nodes match by Code and Name; unnamed nodes also compare Message.
+// Ordinary targets normalize to the unknown code, empty name, and their text.
+// Identical ordinary error text intentionally matches. The target is not unwrapped.
 func (e *Error) Is(target error) bool {
-	other, ok := errors.AsType[*Error](target)
-	if !ok {
+	if e == nil || nilError(target) || !e.Code.Valid() {
 		return false
 	}
-
-	return e.Code == other.Code &&
-		e.Name == other.Name
+	code, name, message := codes.Unknown, "", ""
+	if other, ok := target.(*Error); ok {
+		code, name, message = other.Code, other.Name, other.Message
+	} else {
+		message = target.Error()
+	}
+	return e.Code == code && e.Name == name && (e.Name != "" || e.Message == message)
 }
 
 // Unwrap returns the underlying cause error, supporting Go's error unwrapping.
 func (e *Error) Unwrap() error {
+	if e == nil {
+		return nil
+	}
 	return e.Cause
 }
 
 // Error returns the error message, implementing the standard error interface.
 func (e *Error) Error() string {
+	if e == nil {
+		return ""
+	}
 	if e.Cause != nil && e.Cause.Error() != "" {
 		if len(e.Stack) > 0 {
 			return fmt.Sprintf("%s\n\t%s\nCaused by: %s", e.Message, e.Stack, e.Cause)
@@ -106,8 +115,8 @@ func (e Error) LogValue() slog.Value {
 	return slog.GroupValue(attrs...)
 }
 
-// Clone creates a deep copy of the error, allowing safe modification
-// without affecting the original error.
+// Clone copies the error and its top-level attribute slice and details map.
+// Nested detail values and the underlying cause are shared.
 func (e *Error) Clone() *Error {
 	return &Error{
 		Attrs:   slices.Clone(e.Attrs),
@@ -124,6 +133,9 @@ func (e *Error) Clone() *Error {
 // Existing details are preserved, new details override existing keys.
 func (e *Error) WithDetails(details map[string]any) *Error {
 	err := e.Clone()
+	if err.Details == nil {
+		err.Details = make(map[string]any)
+	}
 	maps.Copy(err.Details, details)
 	return err
 }
@@ -159,93 +171,4 @@ func (e *Error) WithCause(cause error) *Error {
 	err := e.Clone()
 	err.Cause = cause
 	return err
-}
-
-func (e *Error) MarshalJSON() ([]byte, error) {
-	return json.Marshal(e.asErrorJSON())
-}
-
-func (e *Error) UnmarshalJSON(b []byte) error {
-	var j errorJSON
-	err := json.Unmarshal(b, &j)
-	if err != nil {
-		return err
-	}
-	e.Cause = j.Cause
-	e.Code = j.Code
-	e.Details = j.Details
-	e.Message = j.Message
-	e.Name = j.Name
-	e.Stack = j.Stack
-	return nil
-}
-
-func (e *Error) asErrorJSON() *errorJSON {
-	return &errorJSON{
-		Cause:   asErrorJSON(e.Cause),
-		Code:    e.Code,
-		Details: maps.Clone(e.Details),
-		Message: e.Message,
-		Name:    e.Name,
-		Stack:   e.Stack,
-	}
-}
-
-type errorJSON struct {
-	Cause   *errorJSON     `json:"cause,omitempty"`
-	Code    codes.Code     `json:"code"`
-	Details map[string]any `json:"details,omitempty"`
-	Message string         `json:"message"`
-	Name    string         `json:"name"`
-	Stack   string         `json:"stack,omitempty"`
-}
-
-func (e *errorJSON) Error() string {
-	if e == nil {
-		return ""
-	}
-	return e.Message
-}
-
-func (e *errorJSON) Unwrap() error {
-	if e == nil {
-		return nil
-	}
-	// Otherwise, it will be interpreted as nil error.
-	if e.Cause == nil {
-		return nil
-	}
-
-	return e.Cause
-}
-
-func (e *errorJSON) Is(err error) bool {
-	if e == nil || err == nil {
-		return false
-	}
-	ej, ok := errors.AsType[*errorJSON](err)
-	if !ok {
-		ej = asErrorJSON(err)
-	}
-	return e.Code == ej.Code && e.Name == ej.Name && e.Message == ej.Message
-}
-
-func asErrorJSON(err error) *errorJSON {
-	if err == nil {
-		return nil
-	}
-	if e, ok := errors.AsType[*errorJSON](err); ok {
-		return e
-	}
-
-	if e, ok := errors.AsType[*Error](err); ok {
-		return e.asErrorJSON()
-	}
-
-	return &errorJSON{
-		Cause:   asErrorJSON(errors.Unwrap(err)),
-		Code:    codes.Unknown,
-		Message: err.Error(),
-		Name:    codes.Text(codes.Unknown),
-	}
 }
