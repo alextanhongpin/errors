@@ -98,6 +98,10 @@ func (a *BTOApplication) Errors() validation.Errors {
 ```
 
 Slice errors are prefixed with the index, e.g. `spouses[0].name`, `children[1].age`.
+Nil elements produce a `required` error at their index, e.g. `spouses[0]: required`.
+An empty error key refers to the nested value itself: `Errors{"": {"invalid"}}`
+under `author` produces `author: invalid`. Nested slice indexes concatenate,
+e.g. `groups[0][1].name`.
 
 `SliceOf` converts a slice to a validatable slice:
 

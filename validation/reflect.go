@@ -5,6 +5,10 @@ import "reflect"
 // IsNilOrZero reports whether the value is nil or the zero value for its type.
 // It handles pointers, maps, slices, chans, funcs, interfaces, and zero-valued structs/primitives.
 func IsNilOrZero(x any) bool {
+	return isNil(x) || reflect.ValueOf(x).IsZero()
+}
+
+func isNil(x any) bool {
 	if x == nil {
 		return true
 	}
@@ -18,6 +22,5 @@ func IsNilOrZero(x any) bool {
 		}
 	}
 
-	// Check if it's the default zero value for its type (works for structs, ints, etc.)
-	return v.IsZero()
+	return false
 }

@@ -21,12 +21,18 @@ func SliceOf[T validatable](s []T) Slice[T] {
 }
 
 // Errors returns a map of field errors for each element in the slice.
-// Keys are formatted as "[i].field".
+// Keys are formatted as "[i].field". Nil elements report "[i]: required";
+// an empty field key reports an error on the element itself.
 func (ss Slice[T]) Errors() Errors {
 	field := make(map[string][]string)
 	for i, s := range ss {
+		prefix := fmt.Sprintf("[%d]", i)
+		if isNil(s) {
+			field[prefix] = []string{"required"}
+			continue
+		}
 		for k, v := range s.Errors() {
-			field[fmt.Sprintf("[%d].%s", i, k)] = v
+			field[nestedKey(prefix, k)] = v
 		}
 	}
 	return field
@@ -68,13 +74,23 @@ func (e Errors) Required[T validatable](key string, val T) {
 // nest merges errors from a validatable value under the given key prefix.
 func (e Errors) nest[T validatable](key string, val T) {
 	for k, v := range val.Errors() {
-		if k[0] == '[' {
-			k = fmt.Sprintf("%s%s", key, k)
-		} else {
-			k = fmt.Sprintf("%s.%s", key, k)
-		}
+		k = nestedKey(key, k)
 		e[k] = append(e[k], v...)
 	}
+}
+
+// An empty child key denotes an error on the nested value itself.
+func nestedKey(parent, child string) string {
+	if parent == "" {
+		return child
+	}
+	if child == "" {
+		return parent
+	}
+	if child[0] == '[' {
+		return parent + child
+	}
+	return parent + "." + child
 }
 
 // Add appends an error message for the given key.
